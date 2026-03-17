@@ -15,18 +15,26 @@ function startLiveUpdates(store = null) {
   }
 
   function mapStatus(status) {
-    if (status === "NOT BUSY") return "LOW";
+    if (status === "NOT BUSY") return "NOT BUSY";
     if (status === "MODERATE") return "MODERATE";
-    if (status === "BUSY") return "HIGH";
+    if (status === "BUSY") return "BUSY";
     return status || "UNKNOWN";
+  }
+
+  function getWaitTime(label) {
+    if (label === "NOT BUSY") return "5-6";
+    if (label === "MODERATE") return "8-9";
+    if (label === "BUSY") return "11-12";
+    return "--";
   }
 
   function setColor(el, label) {
     if (!el) return;
 
-    if (label === "HIGH") el.style.backgroundColor = "red";
-    else if (label === "MODERATE") el.style.backgroundColor = "orange";
-    else el.style.backgroundColor = "green";
+    if (label === "BUSY") el.style.backgroundColor = "red";
+    else if (label === "MODERATE") el.style.backgroundColor = "yellow";
+    else if (label === "NOT BUSY") el.style.backgroundColor = "green";
+    else el.style.backgroundColor = "";
   }
 
   async function updateSingleStorePage() {
@@ -46,7 +54,7 @@ function startLiveUpdates(store = null) {
     });
 
     document.querySelectorAll(".est").forEach(el=>{
-      el.textContent = Math.max(1,Math.round(people * 1.5));
+      el.textContent = getWaitTime(label);
     });
 
     const d = data.updated ? new Date(data.updated) : new Date();
