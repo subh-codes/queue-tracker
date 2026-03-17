@@ -9,49 +9,57 @@ body {
     background-color: #05060A;
     color: white;
     min-height: 100vh;
-    padding: 16px;
+    padding: 12px;
 }
 
 header {
+    min-height: 60px;
+    border-bottom: 1px solid white;
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    margin-top: 6px;
+    padding: 12px 4px 14px;
     flex-wrap: wrap;
 }
 
 .backbutton {
     display: flex;
-    flex-direction: row;
-    justify-content: center;
     align-items: center;
-    flex-shrink: 0;
+    gap: 8px;
 }
 
-#backarrow {
-    font-size: 18px;
-    margin-right: 5px;
-    color: rgba(13, 227, 13, 0.793);
-}
-
-#back {
+.back-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
     color: white;
 }
 
+#backarrow {
+    font-size: 24px;
+}
+
+#back {
+    font-size: 1rem;
+}
+
 .store-name {
+    font-size: clamp(1.7rem, 6vw, 2.2rem);
     font-weight: bold;
-    font-size: clamp(1.25rem, 4vw, 1.9rem);
     font-family: Orbitron, sans-serif;
-    flex: 1;
     text-align: center;
 }
 
+.live-refresh {
+    font-size: 1rem;
+}
+
 .online-status {
-    margin-right: 10px;
-    color: rgba(13, 227, 13, 0.95);
-    font-weight: 600;
+    color: rgb(14, 255, 70);
+    font-weight: bold;
+    margin-right: 6px;
 }
 
 main {
@@ -59,150 +67,168 @@ main {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-}
-
-.number-of-people {
-    font-size: clamp(3.8rem, 17vw, 9.4rem);
-    line-height: 1;
+    width: 100%;
+    margin-top: 36px;
+    gap: 24px;
 }
 
 .store-report {
-    color: black;
-    width: min(100%, 1000px);
-    background-color: rgb(230, 224, 224);
-    margin-top: 24px;
+    width: 100%;
+    max-width: 1100px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
+    border: 2px solid white;
+    padding: 28px 20px;
+    line-height: 1.6;
     border-radius: 20px;
-    box-shadow: 13px 13px 12px rgba(35, 197, 3, 0.871);
-    padding: 34px 20px;
+    min-height: 320px;
+    gap: 18px;
+}
+
+.people-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
 }
 
 .people {
-    font-size: clamp(1.25rem, 5vw, 5.6rem);
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 14px;
     font-family: Orbitron, sans-serif;
+    font-size: clamp(2rem, 5vw, 5rem);
+    line-height: 1;
     text-align: center;
 }
 
-.esttime {
-    font-size: 1rem;
-    margin-top: 14px;
-    text-align: center;
+.number-of-people {
+    font-size: inherit;
 }
 
-.lastupdstatus {
-    font-size: 0.95rem;
-    margin-top: 10px;
-    text-align: center;
-}
-
-.footer {
-    width: min(100%, 560px);
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
-    margin-top: 28px;
-}
-
-.busiest-time,
-.sensor-status {
-    background-color: white;
-    color: black;
-    min-height: 150px;
-    width: 100%;
+.status-row {
     display: flex;
-    flex-direction: column;
     justify-content: center;
-    align-items: center;
-    border-radius: 20px;
-    padding: 20px 14px;
-    text-align: center;
-}
-
-.busiest-time {
-    box-shadow: 3px 3px 2px rgba(255, 255, 255, 0.3);
-}
-
-.sensor-status {
-    box-shadow: 3px 3px 2px rgba(255, 255, 255, 0.3);
-}
-
-.foottitle {
-    border-bottom: 2px solid black;
-    padding-bottom: 10px;
-    font-weight: bold;
-}
-
-.footerfoot {
-    margin-top: 18px;
+    width: 100%;
 }
 
 .status {
-    width: 100px;
-    font-size: clamp(1rem, 3vw, 1.875rem);
-    min-height: 40px;
-    border-radius: 12px;
+    min-width: 130px;
+    min-height: 42px;
+    padding: 8px 18px;
+    border-radius: 14px;
     display: inline-flex;
     justify-content: center;
     align-items: center;
     background-color: rgb(14, 183, 70);
     color: white;
-    padding: 6px 12px;
+    text-align: center;
+    white-space: nowrap;
+    font-family: Orbitron, sans-serif;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.esttime {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.lastupdstatus {
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.footer {
+    width: 100%;
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.busiest-time,
+.sensor-status {
+    border: 2px solid white;
+    border-radius: 20px;
+    padding: 24px 18px;
+    text-align: center;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+}
+
+.foottitle {
+    font-size: 1.4rem;
+    font-weight: bold;
+    font-family: Orbitron, sans-serif;
+    border-bottom: 1px solid white;
+    padding-bottom: 10px;
+}
+
+.footerfoot {
+    font-size: 1.2rem;
 }
 
 @media (max-width: 768px) {
-    header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .store-name {
-        width: 100%;
-        text-align: left;
-    }
-
-    .store-report {
-        padding: 28px 16px;
-    }
-
-    .people {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .footer {
-        grid-template-columns: 1fr;
-        width: min(100%, 380px);
-    }
-}
-
-@media (max-width: 480px) {
     body {
         padding: 14px;
     }
 
-    .store-name {
-        font-size: 1.15rem;
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
     }
 
-    header > div:last-child {
-        font-size: 0.92rem;
+    .store-name {
+        text-align: left;
+    }
+
+    main {
+        margin-top: 28px;
+    }
+
+    .store-report,
+    .footer {
+        max-width: 420px;
+    }
+
+    .footer {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .store-name {
+        font-size: 1.45rem;
     }
 
     .store-report {
-        border-radius: 18px;
-        box-shadow: 7px 7px 10px rgba(35, 197, 3, 0.65);
+        min-height: unset;
+        padding: 22px 16px;
     }
 
+    .people {
+        font-size: 2.2rem;
+    }
+
+    .status {
+        min-width: 120px;
+        min-height: 38px;
+        padding: 7px 14px;
+        font-size: 0.9rem;
+    }
+
+    .esttime,
+    .lastupdstatus,
     .footerfoot {
-        font-size: 0.95rem;
+        font-size: 1rem;
+    }
+
+    .foottitle {
+        font-size: 1.2rem;
     }
 }
