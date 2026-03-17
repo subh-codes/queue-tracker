@@ -4,7 +4,7 @@ from ultralytics import YOLO
 import time
 
 # Azure Website
-API_URL = "qmswebapp-c4anadadd0agf7ej.westus-01.azurewebsites.net"
+API_URL = "https://qmswebapp-c4anadadd0agf7ej.westus-01.azurewebsites.net"
 
 # Load YOLO model
 model = YOLO("yolov8n.pt")
