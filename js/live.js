@@ -1,3 +1,21 @@
+function applyStatusColor(element, statusText) {
+    if (!element) return;
+
+    element.classList.remove("not-busy", "moderate", "busy", "unknown");
+
+    const status = (statusText || "").toUpperCase().trim();
+
+    if (status === "NOT BUSY" || status === "LOW") {
+        element.classList.add("not-busy");
+    } else if (status === "MODERATE" || status === "MEDIUM") {
+        element.classList.add("moderate");
+    } else if (status === "BUSY") {
+        element.classList.add("busy");
+    } else {
+        element.classList.add("unknown");
+    }
+}
+
 async function fetchQueueData(store) {
     try {
         const response = await fetch(`/queue?store=${store}`);
@@ -45,6 +63,7 @@ async function refreshStoresPage() {
 
         if (statusEls[i]) {
             statusEls[i].textContent = data.status ?? "UNKNOWN";
+            applyStatusColor(statusEls[i], data.status);
         }
 
         const time = formatTimeParts(data.updated);
@@ -99,6 +118,7 @@ async function refreshSingleStorePage(store) {
 
     if (statusEl) {
         statusEl.textContent = data.status ?? "UNKNOWN";
+        applyStatusColor(statusEl, data.status);
     }
 
     if (estEl) {
