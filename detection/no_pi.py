@@ -3,7 +3,7 @@ import requests
 from ultralytics import YOLO
 import time
 
-# 🔴 CHANGE THIS to your Azure URL
+# Azure Website
 API_URL = "qmswebapp-c4anadadd0agf7ej.westus-01.azurewebsites.net"
 
 # Load YOLO model
@@ -55,14 +55,17 @@ while True:
 
         try:
             response = requests.post(API_URL, json={
-                "count": people_count,
+                "store": "timhortons",
+                "people": people_count,
                 "status": status
             })
-            print("Sent:", response.status_code)
+
+            print("Sent:", response.status_code, "| People:", people_count)
+
         except Exception as e:
             print("Error:", e)
 
-    # Show camera smoothly
+    # Show camera
     cv2.imshow("Camera", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
