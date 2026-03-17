@@ -21,12 +21,6 @@ def get_status(count):
 
 print("Camera starting...")
 
-frame_skip = 8   #  BIG CHANGE (less lag)
-frame_count = 0
-
-prev_count = 0
-people_count = 0
-
 while True:
     ret, frame = cap.read()
 
@@ -34,52 +28,43 @@ while True:
         print("Camera failed")
         break
 
-    frame_count += 1
+    # Sizing
+    frame = cv2.resize(frame, (640, 480))
 
-    # smaller frame = faster detection
-    frame = cv2.resize(frame, (416, 320))
+    people_count = 0
 
-    # ONLY detect every few frames
-    if frame_count % frame_skip == 0:
+    results = model(frame)
 
-        raw_count = 0
+    for r in results:
+        for box in r.boxes:
+            cls = int(box.cls[0])
 
-        results = model(frame, verbose=False)
+            # ONLY check for person (no confidence filter for now)
+            if cls == 0:
+                people_count += 1
 
-        for r in results:
-            for box in r.boxes:
-                cls = int(box.cls[0])
-                conf = float(box.conf[0])
+    status = get_status(people_count)
 
-                # LOWERED threshold so it detects again
-                if cls == 0 and conf > 0.3:
-                    raw_count += 1
+    print(f"People: {people_count} | Status: {status}")
 
-        # smoothing
-        people_count = int((prev_count * 0.6) + (raw_count * 0.4))
-        prev_count = people_count
+    # send to Azure
+    try:
+        response = requests.post(
+            API_URL,
+            json={
+                "store": "timhortons",
+                "people": people_count,
+                "status": status
+            },
+            verify=False
+        )
 
-        status = get_status(people_count)
+        print("Sent:", response.status_code)
 
-        print(f"People: {people_count} | Status: {status}")
+    except Exception as e:
+        print("Error:", e)
 
-        try:
-            response = requests.post(
-                API_URL,
-                json={
-                    "store": "timhortons",
-                    "people": people_count,
-                    "status": status
-                },
-                verify=False
-            )
-
-            print("Sent:", response.status_code)
-
-        except Exception as e:
-            print("Error:", e)
-
-    # show camera (ALWAYS runs = smooth video)
+    # show camera
     cv2.imshow("Camera", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):

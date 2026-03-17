@@ -14,19 +14,19 @@ function startLiveUpdates(store = null) {
     return await response.json();
   }
 
+  //  FIXED: remove old mapping confusion
   function mapStatus(status) {
-    if (status === "NOT BUSY") return "LOW";
-    if (status === "MODERATE") return "MODERATE";
-    if (status === "BUSY") return "HIGH";
     return status || "UNKNOWN";
   }
 
+  //  FIXED: proper color handling
   function setColor(el, label) {
     if (!el) return;
 
     if (label === "HIGH") el.style.backgroundColor = "red";
-    else if (label === "MODERATE") el.style.backgroundColor = "orange";
-    else el.style.backgroundColor = "green";
+    else if (label === "MEDIUM") el.style.backgroundColor = "orange";
+    else if (label === "LOW") el.style.backgroundColor = "green";
+    else el.style.backgroundColor = "gray";
   }
 
   async function updateSingleStorePage() {
@@ -152,9 +152,7 @@ function startLiveUpdates(store = null) {
   setInterval(update,5000);
 }
 
-
 /* AUTO START */
-
 document.addEventListener("DOMContentLoaded",()=>{
   startLiveUpdates();
 });
