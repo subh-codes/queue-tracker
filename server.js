@@ -65,7 +65,6 @@ app.post("/update", (req, res) => {
   const {
     store,
     people,
-    status,
     busiest_hour_start,
     busiest_hour_end
   } = req.body;
@@ -76,9 +75,19 @@ app.post("/update", (req, res) => {
     return res.status(400).json({ error: "Invalid store" });
   }
 
+  const peopleCount = Number(people ?? 0);
+  let status;
+  if (peopleCount < 3) {
+    status = "NOT BUSY";
+  } else if (peopleCount <= 6) {
+    status = "MODERATE";
+  } else {
+    status = "BUSY";
+  }
+
   storeData[storeName] = {
-    people: Number(people ?? 0),
-    status: status || "UNKNOWN",
+    people: peopleCount,
+    status,
     updated: new Date().toISOString(),
     busiest_hour_start: busiest_hour_start ?? "--",
     busiest_hour_end: busiest_hour_end ?? "--"
