@@ -1,168 +1,148 @@
-function startLiveUpdates(store = null) {
+async function fetchQueueData(store) {
+    try {
+        const response = await fetch(`/queue?store=${store}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data for ${store}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Fetch error:", error);
+        return null;
+    }
+}
 
-  const storeName = store || document.body.dataset.store || "timhortons";
-
-  async function fetchStoreStatus(name) {
-    const response = await fetch(`/queue?store=${encodeURIComponent(name)}`, {
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error("Queue API error");
+function formatTimeParts(isoString) {
+    if (!isoString) {
+        return {
+            hour: "--",
+            mins: "--",
+            secs: "--"
+        };
     }
 
-    return await response.json();
-  }
+    const date = new Date(isoString);
 
-  function mapStatus(status) {
-    if (status === "NOT BUSY") return "NOT BUSY";
-    if (status === "MODERATE") return "MODERATE";
-    if (status === "BUSY") return "BUSY";
-    return status || "UNKNOWN";
-  }
+    return {
+        hour: String(date.getHours()).padStart(2, "0"),
+        mins: String(date.getMinutes()).padStart(2, "0"),
+        secs: String(date.getSeconds()).padStart(2, "0")
+    };
+}
 
-  function getWaitTime(label) {
-    if (label === "NOT BUSY") return "5-6";
-    if (label === "MODERATE") return "8-9";
-    if (label === "BUSY") return "11-12";
-    return "--";
-  }
+async function refreshStoresPage() {
+    const stores = ["timhortons", "starbucks", "edojapan"];
 
-  function setColor(el, label) {
-    if (!el) return;
+    const statusEls = document.querySelectorAll(".status");
+    const updatedHourEls = document.querySelectorAll(".updated-hour");
+    const updatedMinEls = document.querySelectorAll(".updated-mins");
 
-    if (label === "BUSY") el.style.backgroundColor = "red";
-    else if (label === "MODERATE") el.style.backgroundColor = "yellow";
-    else if (label === "NOT BUSY") el.style.backgroundColor = "green";
-    else el.style.backgroundColor = "";
-  }
+    for (let i = 0; i < stores.length; i++) {
+        const data = await fetchQueueData(stores[i]);
 
-  async function updateSingleStorePage() {
-
-    const data = await fetchStoreStatus(storeName);
-
-    const people = Number(data.people ?? 0);
-    const label = mapStatus(data.status);
-
-    document.querySelectorAll(".number-of-people").forEach(el=>{
-      el.textContent = people;
-    });
-
-    document.querySelectorAll(".status").forEach(el=>{
-      el.textContent = label;
-      setColor(el,label);
-    });
-
-    document.querySelectorAll(".est").forEach(el=>{
-      el.textContent = getWaitTime(label);
-    });
-
-    const d = data.updated ? new Date(data.updated) : new Date();
-
-    const h = String(d.getHours()).padStart(2,"0");
-    const m = String(d.getMinutes()).padStart(2,"0");
-    const s = String(d.getSeconds()).padStart(2,"0");
-
-    document.querySelectorAll(".hour").forEach(el=>el.textContent=h);
-    document.querySelectorAll(".mins").forEach(el=>el.textContent=m);
-    document.querySelectorAll(".secs").forEach(el=>el.textContent=s);
-
-    document.querySelectorAll(".online-status").forEach(el=>{
-      el.textContent = "Live";
-    });
-
-    document.querySelectorAll(".esthr1").forEach(el=>{
-      el.textContent = data.busiest_hour_start ?? "--";
-    });
-
-    document.querySelectorAll(".esthr2").forEach(el=>{
-      el.textContent = data.busiest_hour_end ?? "--";
-    });
-  }
-
-  async function updateStoresPage(){
-
-    const stores = ["timhortons","starbucks","edojapan"];
-    const cards = document.querySelectorAll(".layout");
-
-    const results = await Promise.all(
-      stores.map(async(name)=>{
-        try{
-          return {store:name,data:await fetchStoreStatus(name)};
+        if (!data) {
+            continue;
         }
-        catch{
-          return {store:name,data:null};
+
+        if (statusEls[i]) {
+            statusEls[i].textContent = data.status ?? "UNKNOWN";
         }
-      })
-    );
+
+        const time = formatTimeParts(data.updated);
+
+        if (updatedHourEls[i]) {
+            updatedHourEls[i].textContent = time.hour;
+        }
+
+        if (updatedMinEls[i]) {
+            updatedMinEls[i].textContent = time.mins;
+        }
+    }
 
     const now = new Date();
 
-    document.querySelectorAll(".refresh-hour")
-      .forEach(el=>el.textContent=String(now.getHours()).padStart(2,"0"));
+    const refreshHour = document.querySelector(".refresh-hour");
+    const refreshMins = document.querySelector(".refresh-mins");
+    const refreshSecs = document.querySelector(".refresh-seconds");
 
-    document.querySelectorAll(".refresh-mins")
-      .forEach(el=>el.textContent=String(now.getMinutes()).padStart(2,"0"));
-
-    document.querySelectorAll(".refresh-seconds")
-      .forEach(el=>el.textContent=String(now.getSeconds()).padStart(2,"0"));
-
-    results.forEach((item,index)=>{
-
-      const card = cards[index];
-      if(!card) return;
-
-      const statusEl = card.querySelector(".status");
-      const hourEl = card.querySelector(".updated-hour");
-      const minEl = card.querySelector(".updated-mins");
-
-      if(!item.data){
-        if(statusEl) statusEl.textContent="OFFLINE";
-        return;
-      }
-
-      const label = mapStatus(item.data.status);
-
-      if(statusEl){
-        statusEl.textContent = label;
-        setColor(statusEl,label);
-      }
-
-      const d = item.data.updated ? new Date(item.data.updated) : new Date();
-
-      if(hourEl) hourEl.textContent = String(d.getHours()).padStart(2,"0");
-      if(minEl) minEl.textContent = String(d.getMinutes()).padStart(2,"0");
-    });
-  }
-
-  async function update(){
-    try{
-
-      if(document.querySelector(".number-of-people")){
-        await updateSingleStorePage();
-      }
-
-      else if(document.querySelector(".layout")){
-        await updateStoresPage();
-      }
-
-    } catch(e){
-
-      document.querySelectorAll(".online-status").forEach(el=>{
-        el.textContent="Offline";
-      });
-
-      console.log("Live update error:",e);
+    if (refreshHour) {
+        refreshHour.textContent = String(now.getHours()).padStart(2, "0");
     }
-  }
 
-  update();
-  setInterval(update,5000);
+    if (refreshMins) {
+        refreshMins.textContent = String(now.getMinutes()).padStart(2, "0");
+    }
+
+    if (refreshSecs) {
+        refreshSecs.textContent = String(now.getSeconds()).padStart(2, "0");
+    }
 }
 
+async function refreshSingleStorePage(store) {
+    const data = await fetchQueueData(store);
 
-/* AUTO START */
+    if (!data) {
+        return;
+    }
 
-document.addEventListener("DOMContentLoaded",()=>{
-  startLiveUpdates();
-});
+    const peopleEl = document.querySelector(".number-of-people");
+    const statusEl = document.querySelector(".status");
+    const estEl = document.querySelector(".est");
+    const hourEl = document.querySelector(".hour");
+    const minsEl = document.querySelector(".mins");
+    const secsEl = document.querySelector(".secs");
+    const busiestStartEl = document.querySelector(".esthr1");
+    const busiestEndEl = document.querySelector(".esthr2");
+
+    if (peopleEl) {
+        peopleEl.textContent = data.people ?? "--";
+    }
+
+    if (statusEl) {
+        statusEl.textContent = data.status ?? "UNKNOWN";
+    }
+
+    if (estEl) {
+        const estimatedWait = data.people != null ? data.people * 2 : "--";
+        estEl.textContent = estimatedWait;
+    }
+
+    const time = formatTimeParts(data.updated);
+
+    if (hourEl) {
+        hourEl.textContent = time.hour;
+    }
+
+    if (minsEl) {
+        minsEl.textContent = time.mins;
+    }
+
+    if (secsEl) {
+        secsEl.textContent = time.secs;
+    }
+
+    if (busiestStartEl) {
+        busiestStartEl.textContent = data.busiest_hour_start ?? "--";
+    }
+
+    if (busiestEndEl) {
+        busiestEndEl.textContent = data.busiest_hour_end ?? "--";
+    }
+}
+
+function startLiveUpdates() {
+    const path = window.location.pathname.toLowerCase();
+
+    if (path.includes("stores.html")) {
+        refreshStoresPage();
+        setInterval(refreshStoresPage, 1500);
+    } else if (path.includes("timhortons.html")) {
+        refreshSingleStorePage("timhortons");
+        setInterval(() => refreshSingleStorePage("timhortons"), 1500);
+    } else if (path.includes("starbucks.html")) {
+        refreshSingleStorePage("starbucks");
+        setInterval(() => refreshSingleStorePage("starbucks"), 1500);
+    } else if (path.includes("edojapan.html")) {
+        refreshSingleStorePage("edojapan");
+        setInterval(() => refreshSingleStorePage("edojapan"), 1500);
+    }
+}
