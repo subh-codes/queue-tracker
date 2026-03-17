@@ -1,7 +1,17 @@
+.logo-text {
+    font-size: 20px;
+    font-weight: bold;
+    font-family: Orbitron, sans-serif;
+}
+
+.refresh-text {
+    font-size: 1rem;
+}
+
 .layout {
     display: flex;
     flex-direction: column;
-    justify-content: start;
+    justify-content: flex-start;
     align-items: center;
     border: 2px solid white;
     padding: 20px 18px;
@@ -9,7 +19,7 @@
     border-radius: 20px;
     min-height: 220px;
     width: 100%;
-    gap: 8px;
+    gap: 10px;
 }
 
 .report {
@@ -31,10 +41,26 @@
     align-items: center;
     background-color: rgb(14, 183, 70);
     color: white;
-    margin-top: 10px;
+    margin-top: 0;
     text-align: center;
     white-space: nowrap;
     font-family: Orbitron, sans-serif;
     font-size: 1rem;
     line-height: 1;
+}
+
+.status-button a {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    text-decoration: none;
+}
+
+@media (max-width: 480px) {
+    .status {
+        min-width: 120px;
+        min-height: 38px;
+        padding: 7px 14px;
+        font-size: 0.9rem;
+    }
 }
