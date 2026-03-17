@@ -13,14 +13,17 @@ model = YOLO("yolov8n.pt")
 cap = cv2.VideoCapture(0)
 
 def get_status(count):
-    if count <= 3:
+    if count <= 1:
         return "LOW"
-    elif count <= 6:
+    elif count <= 2:
         return "MEDIUM"
     else:
         return "HIGH"
 
 print("Camera starting...")
+
+frame_skip = 3
+frame_count = 0
 
 while True:
     ret, frame = cap.read()
@@ -29,38 +32,41 @@ while True:
         print("Camera failed")
         break
 
-    # Run detection
-    results = model(frame)
+    frame_count += 1
+
+    # Resize for performance
+    frame = cv2.resize(frame, (640, 480))
 
     people_count = 0
 
-    for r in results:
-        for box in r.boxes:
-            cls = int(box.cls[0])
-            if cls == 0:  # 0 = person
-                people_count += 1
+    # Only run detection every few frames
+    if frame_count % frame_skip == 0:
+        results = model(frame)
 
-    status = get_status(people_count)
+        for r in results:
+            for box in r.boxes:
+                cls = int(box.cls[0])
+                if cls == 0:
+                    people_count += 1
 
-    print(f"People: {people_count} | Status: {status}")
+        status = get_status(people_count)
 
-    # Send to Azure
-    try:
-        response = requests.post(API_URL, json={
-            "count": people_count,
-            "status": status
-        })
-        print("Sent to Azure:", response.status_code)
-    except Exception as e:
-        print("Error sending to Azure:", e)
+        print(f"People: {people_count} | Status: {status}")
 
-    # Show camera (optional but helpful)
+        try:
+            response = requests.post(API_URL, json={
+                "count": people_count,
+                "status": status
+            })
+            print("Sent:", response.status_code)
+        except Exception as e:
+            print("Error:", e)
+
+    # Show camera smoothly
     cv2.imshow("Camera", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
-    time.sleep(5)
 
 cap.release()
 cv2.destroyAllWindows()
