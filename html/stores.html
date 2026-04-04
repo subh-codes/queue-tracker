@@ -1,29 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue Tracker - Stores</title>
-
     <link rel="stylesheet" href="../css/stores.css">
-
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=location_on" />
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
         rel="stylesheet">
 </head>
-
 <body>
     <header>
+        <a href="./main.html" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
+
         <div class="header-edit">
             <span class="material-symbols-outlined">location_on</span>
             <div class="logo-text">Queue Monitoring System</div>
         </div>
-
         <div class="refresh-text">
             <p>
                 Last refresh:
@@ -33,61 +29,48 @@
             </p>
         </div>
     </header>
-
     <main>
         <h1 class="page-heading">Choose a Cafe</h1>
-
         <div class="Resturants">
             <div class="layout">
                 <div class="resturant-title">Tim Hortons</div>
-
                 <div class="report">
                     <p>Queue Status</p>
                     <span class="status">UNKNOWN</span>
                 </div>
-
                 <div class="time">
                     Updated <span class="updated-hour">--</span>:<span class="updated-mins">--</span>
                 </div>
-
                 <div class="status-button">
                     <a href="timhortons.html">
                         <button type="button">View Status</button>
                     </a>
                 </div>
             </div>
-
             <div class="layout">
                 <div class="resturant-title">Starbucks</div>
-
                 <div class="report">
                     <p>Queue Status</p>
                     <span class="status">UNKNOWN</span>
                 </div>
-
                 <div class="time">
                     Updated <span class="updated-hour">--</span>:<span class="updated-mins">--</span>
                 </div>
-
                 <div class="status-button">
                     <a href="starbucks.html">
                         <button type="button">View Status</button>
                     </a>
                 </div>
             </div>
-
             <div class="layout">
                 <div class="resturant-title">Edo Japan</div>
-
                 <div class="report">
                     <p>Queue Status</p>
                     <span class="status">UNKNOWN</span>
                 </div>
-
                 <div class="time">
                     Updated <span class="updated-hour">--</span>:<span class="updated-mins">--</span>
                 </div>
-
                 <div class="status-button">
                     <a href="edojapan.html">
                         <button type="button">View Status</button>
@@ -96,11 +79,9 @@
             </div>
         </div>
     </main>
-
     <script src="../js/live.js"></script>
     <script>
         startLiveUpdates();
     </script>
 </body>
-
 </html>
