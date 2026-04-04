@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login — Queue Monitoring System</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: #05060A;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Back link — top left, same style as timhortons.html */
+        #backLink {
+            position: fixed;
+            top: 16px;
+            left: 18px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            transition: color 0.2s ease;
+            z-index: 100;
+        }
+        #backLink:hover { color: white; }
+        #backArrow { font-size: 1.1rem; line-height: 1; }
+
+        /* Centre card */
+        .login-wrap {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        /* Header */
+        .login-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-title {
+            font-family: Orbitron, sans-serif;
+            font-size: clamp(1.4rem, 5vw, 2rem);
+            line-height: 1.2;
+        }
+
+        .login-sub {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .admin-badge {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-family: Orbitron, sans-serif;
+            background-color: rgb(14, 183, 70);
+            color: #05060A;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+        }
+
+        /* Card box — same border/radius pattern as trackinfo cards */
+        .login-card {
+            width: 100%;
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 36px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        /* Fields */
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field label {
+            font-family: Orbitron, sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.55);
+            text-transform: uppercase;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+            font-family: Arial, sans-serif;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .field input:focus {
+            border-color: white;
+        }
+
+        .field input::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Error message */
+        #errorMsg {
+            display: none;
+            font-size: 0.85rem;
+            color: rgb(220, 53, 69);
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Login button — same green style as #trackBtn */
+        #loginBtn {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            background-color: rgb(14, 183, 70);
+            color: white;
+            font-size: 1rem;
+            font-family: Orbitron, sans-serif;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 4px;
+        }
+
+        #loginBtn:hover  { background-color: rgb(10, 150, 55); }
+        #loginBtn:active { transform: scale(0.98); }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            .login-card { padding: 28px 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Back to home -->
+    <a href="./main.html" id="backLink">
+        <span id="backArrow">&#8592;</span>
+        <span>Back</span>
+    </a>
+
+    <div class="login-wrap">
+
+        <div class="login-header">
+            <div class="login-title">QUEUE MONITORING<br>SYSTEM</div>
+            <span class="admin-badge">ADMIN ACCESS</span>
+            <p class="login-sub">Enter your credentials to continue</p>
+        </div>
+
+        <div class="login-card">
+            <div class="field">
+                <label for="usernameInput">Username</label>
+                <input
+                    type="text"
+                    id="usernameInput"
+                    placeholder="Enter username"
+                    autocomplete="username"
+                />
+            </div>
+
+            <div class="field">
+                <label for="passwordInput">Password</label>
+                <input
+                    type="password"
+                    id="passwordInput"
+                    placeholder="Enter password"
+                    autocomplete="current-password"
+                />
+            </div>
+
+            <p id="errorMsg">Incorrect username or password.</p>
+
+            <button type="button" id="loginBtn">Login</button>
+        </div>
+
+    </div>
+
+    <script>
+        const CREDENTIALS = {
+            username: "adminque",
+            password: "Subh7901@#"
+        };
+
+        const loginBtn     = document.getElementById("loginBtn");
+        const usernameInput = document.getElementById("usernameInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const errorMsg     = document.getElementById("errorMsg");
+
+        function attemptLogin() {
+            const user = usernameInput.value.trim();
+            const pass = passwordInput.value;
+
+            if (user === CREDENTIALS.username && pass === CREDENTIALS.password) {
+                // Correct — go to admin dashboard
+                window.location.href = "./admin_standalone.html";
+            } else {
+                errorMsg.style.display = "block";
+                passwordInput.value = "";
+                passwordInput.focus();
+            }
+        }
+
+        loginBtn.addEventListener("click", attemptLogin);
+
+        // Allow Enter key on both fields
+        usernameInput.addEventListener("keydown", e => { if (e.key === "Enter") passwordInput.focus(); });
+        passwordInput.addEventListener("keydown", e => { if (e.key === "Enter") attemptLogin(); });
+
+        // Hide error when user starts typing again
+        usernameInput.addEventListener("input", () => errorMsg.style.display = "none");
+        passwordInput.addEventListener("input", () => errorMsg.style.display = "none");
+    </script>
+
+</body>
+</html>
