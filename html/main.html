@@ -1,30 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue Monitoring System</title>
-
     <link rel="stylesheet" href="../css/main.css">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
         rel="stylesheet">
-
     <script src="../js/live.js" defer></script>
-</head>
 
+    <style>
+        #adminCornerBtn {
+            position: fixed;
+            top: 16px;
+            right: 18px;
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.72rem;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.05em;
+            transition: border-color 0.2s ease, color 0.2s ease;
+            z-index: 100;
+        }
+        #adminCornerBtn:hover {
+            border-color: white;
+            color: white;
+        }
+    </style>
+</head>
 <body>
+
+    <a href="./admin_login.html" id="adminCornerBtn">Admin</a>
+
     <main class="title">
         <h1 id="mainTitle">WELCOME TO QUEUE MONITORING SYSTEM</h1>
         <p id="liveStatus">Checking live status...</p>
-
         <a href="./stores.html" class="track-link">
             <button id="trackBtn" type="button">Let's Monitor</button>
         </a>
     </main>
 </body>
-
 </html>
