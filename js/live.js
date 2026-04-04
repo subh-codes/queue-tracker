@@ -31,15 +31,9 @@ async function fetchQueueData(store) {
 
 function formatTimeParts(isoString) {
     if (!isoString) {
-        return {
-            hour: "--",
-            mins: "--",
-            secs: "--"
-        };
+        return { hour: "--", mins: "--", secs: "--" };
     }
-
     const date = new Date(isoString);
-
     return {
         hour: String(date.getHours()).padStart(2, "0"),
         mins: String(date.getMinutes()).padStart(2, "0"),
@@ -50,16 +44,13 @@ function formatTimeParts(isoString) {
 async function refreshStoresPage() {
     const stores = ["timhortons", "starbucks", "edojapan"];
 
-    const statusEls = document.querySelectorAll(".status");
+    const statusEls      = document.querySelectorAll(".status");
     const updatedHourEls = document.querySelectorAll(".updated-hour");
-    const updatedMinEls = document.querySelectorAll(".updated-mins");
+    const updatedMinEls  = document.querySelectorAll(".updated-mins");
 
     for (let i = 0; i < stores.length; i++) {
         const data = await fetchQueueData(stores[i]);
-
-        if (!data) {
-            continue;
-        }
+        if (!data) continue;
 
         if (statusEls[i]) {
             statusEls[i].textContent = data.status ?? "UNKNOWN";
@@ -68,13 +59,8 @@ async function refreshStoresPage() {
 
         const time = formatTimeParts(data.updated);
 
-        if (updatedHourEls[i]) {
-            updatedHourEls[i].textContent = time.hour;
-        }
-
-        if (updatedMinEls[i]) {
-            updatedMinEls[i].textContent = time.mins;
-        }
+        if (updatedHourEls[i]) updatedHourEls[i].textContent = time.hour;
+        if (updatedMinEls[i])  updatedMinEls[i].textContent  = time.mins;
     }
 
     const now = new Date();
@@ -83,38 +69,26 @@ async function refreshStoresPage() {
     const refreshMins = document.querySelector(".refresh-mins");
     const refreshSecs = document.querySelector(".refresh-seconds");
 
-    if (refreshHour) {
-        refreshHour.textContent = String(now.getHours()).padStart(2, "0");
-    }
-
-    if (refreshMins) {
-        refreshMins.textContent = String(now.getMinutes()).padStart(2, "0");
-    }
-
-    if (refreshSecs) {
-        refreshSecs.textContent = String(now.getSeconds()).padStart(2, "0");
-    }
+    if (refreshHour) refreshHour.textContent = String(now.getHours()).padStart(2, "0");
+    if (refreshMins) refreshMins.textContent = String(now.getMinutes()).padStart(2, "0");
+    if (refreshSecs) refreshSecs.textContent = String(now.getSeconds()).padStart(2, "0");
 }
 
 async function refreshSingleStorePage(store) {
     const data = await fetchQueueData(store);
+    if (!data) return;
 
-    if (!data) {
-        return;
-    }
-
-    const peopleEl = document.querySelector(".number-of-people");
-    const statusEl = document.querySelector(".status");
-    const estEl = document.querySelector(".est");
-    const hourEl = document.querySelector(".hour");
-    const minsEl = document.querySelector(".mins");
-    const secsEl = document.querySelector(".secs");
+    const peopleEl      = document.querySelector(".number-of-people");
+    const statusEl      = document.querySelector(".status");
+    const estEl         = document.querySelector(".est");
+    const hourEl        = document.querySelector(".hour");
+    const minsEl        = document.querySelector(".mins");
+    const secsEl        = document.querySelector(".secs");
     const busiestStartEl = document.querySelector(".esthr1");
-    const busiestEndEl = document.querySelector(".esthr2");
+    const busiestEndEl   = document.querySelector(".esthr2");
+    const sensorEl       = document.getElementById("sensorStatus");
 
-    if (peopleEl) {
-        peopleEl.textContent = data.people ?? "--";
-    }
+    if (peopleEl) peopleEl.textContent = data.people ?? "--";
 
     if (statusEl) {
         statusEl.textContent = data.status ?? "UNKNOWN";
@@ -122,30 +96,30 @@ async function refreshSingleStorePage(store) {
     }
 
     if (estEl) {
-        const estimatedWait = data.people != null ? data.people * 2 : "--";
-        estEl.textContent = estimatedWait;
+        estEl.textContent = data.people != null ? data.people * 2 : "--";
     }
 
     const time = formatTimeParts(data.updated);
+    if (hourEl) hourEl.textContent = time.hour;
+    if (minsEl) minsEl.textContent = time.mins;
+    if (secsEl) secsEl.textContent = time.secs;
 
-    if (hourEl) {
-        hourEl.textContent = time.hour;
-    }
+    if (busiestStartEl) busiestStartEl.textContent = data.busiest_hour_start ?? "--";
+    if (busiestEndEl)   busiestEndEl.textContent   = data.busiest_hour_end   ?? "--";
 
-    if (minsEl) {
-        minsEl.textContent = time.mins;
-    }
-
-    if (secsEl) {
-        secsEl.textContent = time.secs;
-    }
-
-    if (busiestStartEl) {
-        busiestStartEl.textContent = data.busiest_hour_start ?? "--";
-    }
-
-    if (busiestEndEl) {
-        busiestEndEl.textContent = data.busiest_hour_end ?? "--";
+    // ── Sensor status ──────────────────────────────────────────
+    if (sensorEl) {
+        const sensor = data.sensor ?? "UNKNOWN";
+        if (sensor === "ONLINE") {
+            sensorEl.textContent  = "Online";
+            sensorEl.style.color  = "rgb(14, 183, 70)";
+        } else if (sensor === "OFFLINE") {
+            sensorEl.textContent  = "Offline";
+            sensorEl.style.color  = "rgb(220, 53, 69)";
+        } else {
+            sensorEl.textContent  = "Unknown";
+            sensorEl.style.color  = "rgb(108, 117, 125)";
+        }
     }
 }
 
