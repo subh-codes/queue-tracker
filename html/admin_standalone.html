@@ -4,446 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Queue Monitoring System</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=location_on" />
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: sans-serif;
-            background-color: #05060A;
-            color: white;
-            min-height: 100vh;
-            padding: 12px;
-        }
-
-        header {
-            min-height: 60px;
-            border-bottom: 1px solid white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            padding: 12px 4px 14px;
-            flex-wrap: wrap;
-        }
-
-        .header-left {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .logo-text {
-            font-size: 20px;
-            font-weight: bold;
-            font-family: Orbitron, sans-serif;
-        }
-
-        .admin-badge {
-            font-size: 0.7rem;
-            font-family: Orbitron, sans-serif;
-            background-color: rgb(14, 183, 70);
-            color: #05060A;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-weight: bold;
-            letter-spacing: 0.05em;
-        }
-
+        body { font-family: sans-serif; background-color: #05060A; color: white; min-height: 100vh; padding: 12px; }
+        header { min-height: 60px; border-bottom: 1px solid white; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 4px 14px; flex-wrap: wrap; }
+        .header-left { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+        .logo-text { font-size: 20px; font-weight: bold; font-family: Orbitron, sans-serif; }
+        .admin-badge { font-size: 0.7rem; font-family: Orbitron, sans-serif; background-color: rgb(14, 183, 70); color: #05060A; padding: 3px 8px; border-radius: 6px; font-weight: bold; letter-spacing: 0.05em; }
         .live-refresh { font-size: 1rem; }
         .online-status { color: rgb(14, 255, 70); font-weight: bold; margin-right: 4px; }
-
-        main {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            margin-top: 36px;
-            gap: 24px;
-        }
-
-        .page-heading {
-            font-size: clamp(1.7rem, 6vw, 2.2rem);
-            font-weight: bold;
-            font-family: Orbitron, sans-serif;
-            text-align: center;
-        }
-
-        .section-label {
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.4);
-            font-family: Orbitron, sans-serif;
-            width: 100%;
-            max-width: 1100px;
-        }
-
-        .store-selector {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .store-tab {
-            padding: 9px 20px;
-            border-radius: 10px;
-            border: 2px solid rgba(255,255,255,0.3);
-            background: transparent;
-            color: rgba(255,255,255,0.55);
-            font-family: Orbitron, sans-serif;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+        main { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 36px; gap: 24px; }
+        .page-heading { font-size: clamp(1.7rem, 6vw, 2.2rem); font-weight: bold; font-family: Orbitron, sans-serif; text-align: center; }
+        .section-label { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); font-family: Orbitron, sans-serif; width: 100%; max-width: 1100px; }
+        .store-selector { width: 100%; max-width: 1100px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .store-tab { padding: 9px 20px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.3); background: transparent; color: rgba(255,255,255,0.55); font-family: Orbitron, sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; }
         .store-tab:hover { border-color: white; color: white; }
         .store-tab.active { background: white; color: #05060A; border-color: white; }
-
-        .live-row {
-            width: 100%;
-            max-width: 1100px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .live-card {
-            border: 2px solid white;
-            border-radius: 20px;
-            padding: 22px 18px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-align: center;
-            min-height: 120px;
-        }
-
-        .live-card-label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: rgba(255,255,255,0.5);
-            font-family: Orbitron, sans-serif;
-        }
-
-        .live-card-value {
-            font-family: Orbitron, sans-serif;
-            font-size: clamp(1.8rem, 4vw, 2.8rem);
-            line-height: 1;
-        }
-
+        .live-row { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .live-card { border: 2px solid white; border-radius: 20px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; min-height: 120px; }
+        .live-card-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; }
+        .live-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; }
         .live-card-sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
-
-        .status {
-            min-width: 130px;
-            min-height: 42px;
-            padding: 8px 18px;
-            border-radius: 14px;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            background-color: rgb(108,117,125);
-            color: white;
-            white-space: nowrap;
-            font-family: Orbitron, sans-serif;
-            font-size: 1rem;
-            line-height: 1;
-            transition: background-color 0.25s ease, color 0.25s ease;
-        }
+        .status { min-width: 130px; min-height: 42px; padding: 8px 18px; border-radius: 14px; display: inline-flex; justify-content: center; align-items: center; background-color: rgb(108,117,125); color: white; white-space: nowrap; font-family: Orbitron, sans-serif; font-size: 1rem; line-height: 1; transition: background-color 0.25s ease, color 0.25s ease; }
         .status.not-busy { background-color: rgb(14,183,70); color: white; }
         .status.moderate  { background-color: rgb(255,170,0); color: black; }
         .status.busy      { background-color: rgb(220,53,69); color: white; }
         .status.unknown   { background-color: rgb(108,117,125); color: white; }
-
-        .summary-tabs {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .sum-tab {
-            padding: 8px 18px;
-            border-radius: 10px;
-            border: 2px solid rgba(255,255,255,0.25);
-            background: transparent;
-            color: rgba(255,255,255,0.5);
-            font-family: Orbitron, sans-serif;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+        .summary-tabs { width: 100%; max-width: 1100px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .sum-tab { padding: 8px 18px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease; }
         .sum-tab:hover { border-color: white; color: white; }
         .sum-tab.active { background: white; color: #05060A; border-color: white; }
-
-        .analytics-grid {
-            width: 100%;
-            max-width: 1100px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
-        }
-
-        .analytics-card {
-            border: 2px solid white;
-            border-radius: 20px;
-            padding: 24px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            min-height: 160px;
-        }
-
+        .analytics-grid { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .analytics-card { border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; min-height: 160px; }
         .analytics-card.full-width { grid-column: 1 / -1; }
-
-        .analytics-card-title {
-            font-size: 1.1rem;
-            font-weight: bold;
-            font-family: Orbitron, sans-serif;
-            border-bottom: 1px solid rgba(255,255,255,0.25);
-            padding-bottom: 10px;
-        }
-
-        .analytics-card-value {
-            font-family: Orbitron, sans-serif;
-            font-size: clamp(1.4rem, 3vw, 2rem);
-            line-height: 1;
-        }
-
-        .analytics-card-sub {
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.5);
-            margin-top: auto;
-        }
-
-        .dist-bar-wrap {
-            width: 100%;
-            height: 16px;
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            background: rgba(255,255,255,0.08);
-        }
-
+        .analytics-card-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
+        .analytics-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1; }
+        .analytics-card-sub { font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-top: auto; }
+        .dist-bar-wrap { width: 100%; height: 16px; border-radius: 8px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); }
         .dist-segment { height: 100%; transition: width 0.5s ease; }
         .dist-segment.not-busy { background-color: rgb(14,183,70); }
         .dist-segment.moderate  { background-color: rgb(255,170,0); }
         .dist-segment.busy      { background-color: rgb(220,53,69); }
-
-        .dist-legend {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-            font-size: 0.85rem;
-            margin-top: 4px;
-        }
-
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
+        .dist-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; margin-top: 4px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
         .legend-dot.not-busy { background-color: rgb(14,183,70); }
         .legend-dot.moderate  { background-color: rgb(255,170,0); }
         .legend-dot.busy      { background-color: rgb(220,53,69); }
-
-        .chart-card {
-            width: 100%;
-            max-width: 1100px;
-            border: 2px solid white;
-            border-radius: 20px;
-            padding: 24px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .chart-title {
-            font-size: 1.1rem;
-            font-weight: bold;
-            font-family: Orbitron, sans-serif;
-            border-bottom: 1px solid rgba(255,255,255,0.25);
-            padding-bottom: 10px;
-        }
-
+        .chart-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 16px; }
+        .chart-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
         .chart-area { width: 100%; overflow-x: auto; }
-
-        .bar-chart {
-            display: flex;
-            align-items: flex-end;
-            gap: 4px;
-            height: 140px;
-            min-width: 500px;
-            padding-bottom: 28px;
-            position: relative;
-        }
-
-        .bar-col {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end;
-            height: 100%;
-            position: relative;
-        }
-
-        .bar {
-            width: 100%;
-            border-radius: 4px 4px 0 0;
-            background-color: rgb(14,183,70);
-            min-height: 2px;
-            transition: height 0.4s ease;
-        }
+        .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; min-width: 500px; padding-bottom: 28px; position: relative; }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+        .bar { width: 100%; border-radius: 4px 4px 0 0; background-color: rgb(14,183,70); min-height: 2px; transition: height 0.4s ease; }
         .bar.moderate { background-color: rgb(255,170,0); }
         .bar.busy     { background-color: rgb(220,53,69); }
         .bar.no-data  { background-color: rgba(255,255,255,0.1); }
-
-        .bar-label {
-            font-size: 0.58rem;
-            color: rgba(255,255,255,0.4);
-            position: absolute;
-            bottom: -20px;
-            white-space: nowrap;
-        }
-
-        .bar-val {
-            font-size: 0.6rem;
-            color: rgba(255,255,255,0.55);
-            position: absolute;
-            top: -16px;
-        }
-
-        .log-card {
-            width: 100%;
-            max-width: 1100px;
-            border: 2px solid white;
-            border-radius: 20px;
-            padding: 24px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .log-title {
-            font-size: 1.1rem;
-            font-weight: bold;
-            font-family: Orbitron, sans-serif;
-            border-bottom: 1px solid rgba(255,255,255,0.25);
-            padding-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .log-count-badge {
-            font-size: 0.8rem;
-            background: rgba(255,255,255,0.1);
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-
-        .log-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            font-size: 0.9rem;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .log-time {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .log-empty {
-            text-align: center;
-            color: rgba(255,255,255,0.3);
-            font-size: 0.9rem;
-            padding: 20px 0;
-        }
-
-        .weekly-placeholder {
-            width: 100%;
-            max-width: 1100px;
-            border: 2px dashed rgba(255,255,255,0.2);
-            border-radius: 20px;
-            padding: 36px 18px;
-            text-align: center;
-            color: rgba(255,255,255,0.3);
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-        }
+        .bar-label { font-size: 0.58rem; color: rgba(255,255,255,0.4); position: absolute; bottom: -20px; white-space: nowrap; }
+        .bar-val { font-size: 0.6rem; color: rgba(255,255,255,0.55); position: absolute; top: -16px; }
+        .log-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .log-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .log-count-badge { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 20px; }
+        .log-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 0.9rem; gap: 8px; flex-wrap: wrap; }
+        .log-time { color: rgba(255,255,255,0.5); font-size: 0.8rem; white-space: nowrap; }
+        .log-empty { text-align: center; color: rgba(255,255,255,0.3); font-size: 0.9rem; padding: 20px 0; }
+        .weekly-placeholder { width: 100%; max-width: 1100px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 36px 18px; text-align: center; color: rgba(255,255,255,0.3); display: none; flex-direction: column; gap: 10px; align-items: center; }
         .weekly-placeholder.visible { display: flex; }
-        .weekly-placeholder-title {
-            font-family: Orbitron, sans-serif;
-            font-size: 1rem;
-        }
-
+        .weekly-placeholder-title { font-family: Orbitron, sans-serif; font-size: 1rem; }
         .log-list::-webkit-scrollbar { width: 4px; }
-        .log-list::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
-        }
-        .log-list::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-        }
-
+        .log-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
         @media (max-width: 768px) {
             body { padding: 14px; }
             header { flex-direction: column; align-items: flex-start; gap: 8px; }
             main { margin-top: 28px; }
             .live-row, .analytics-grid { grid-template-columns: 1fr; max-width: 420px; }
-            .chart-card, .log-card, .summary-tabs, .section-label,
-            .store-selector, .weekly-placeholder { max-width: 420px; }
+            .chart-card, .log-card, .summary-tabs, .section-label, .store-selector, .weekly-placeholder { max-width: 420px; }
         }
-
         @media (max-width: 480px) {
             .page-heading { font-size: 1.45rem; }
             .live-card-value { font-size: 1.8rem; }
             .analytics-card-value { font-size: 1.4rem; }
-            .status {
-                min-width: 120px;
-                min-height: 38px;
-                padding: 7px 14px;
-                font-size: 0.9rem;
-            }
+            .status { min-width: 120px; min-height: 38px; padding: 7px 14px; font-size: 0.9rem; }
         }
     </style>
 </head>
-
 <body>
     <header>
+        <a href="./stores.html" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
         <div class="header-left">
             <span class="material-symbols-outlined">location_on</span>
             <div class="logo-text">Queue Monitoring System</div>
@@ -458,13 +110,11 @@
 
     <main>
         <h1 class="page-heading">Queue Admin Dashboard</h1>
-
         <div class="store-selector">
             <button class="store-tab active" data-store="timhortons" type="button">Tim Hortons</button>
             <button class="store-tab" data-store="starbucks" type="button">Starbucks</button>
             <button class="store-tab" data-store="edojapan" type="button">Edo Japan</button>
         </div>
-
         <div class="section-label">Current Queue Status</div>
         <div class="live-row">
             <div class="live-card">
@@ -487,15 +137,12 @@
                 <div class="live-card-sub">last queue update</div>
             </div>
         </div>
-
         <div class="section-label">View Summary</div>
         <div class="summary-tabs">
             <button class="sum-tab active" data-period="today" type="button">Today</button>
             <button class="sum-tab" data-period="weekly" type="button">Weekly</button>
         </div>
-
         <div class="section-label" id="analyticsLabel">Today Summary</div>
-
         <div class="analytics-grid" id="todayAnalytics">
             <div class="analytics-card">
                 <div class="analytics-card-title">Peak Hour</div>
@@ -532,13 +179,12 @@
                 <div class="analytics-card-value" id="statusChanges">--</div>
                 <div class="analytics-card-sub">How many times the status changed today</div>
             </div>
-
             <div class="analytics-card full-width">
                 <div class="analytics-card-title">Time Spent in Each Status</div>
                 <div class="dist-bar-wrap">
                     <div class="dist-segment not-busy" id="distNotBusy" style="width:0%"></div>
-                    <div class="dist-segment moderate" id="distModerate" style="width:0%"></div>
-                    <div class="dist-segment busy" id="distBusy" style="width:0%"></div>
+                    <div class="dist-segment moderate"  id="distModerate" style="width:0%"></div>
+                    <div class="dist-segment busy"       id="distBusy"    style="width:0%"></div>
                 </div>
                 <div class="dist-legend">
                     <span><span class="legend-dot not-busy"></span>Not Busy: <span id="distNotBusyPct">--%</span> (<span id="distNotBusyTime">--</span>)</span>
@@ -547,14 +193,10 @@
                 </div>
             </div>
         </div>
-
         <div class="weekly-placeholder" id="weeklyPanel">
             <div class="weekly-placeholder-title">Weekly Summary</div>
-            <div style="font-size:0.85rem;">
-                This section will be used later when more weekly data is stored in the system.
-            </div>
+            <div style="font-size:0.85rem;">This section will be used later when more weekly data is stored in the system.</div>
         </div>
-
         <div class="section-label">Hourly Queue Trend</div>
         <div class="chart-card">
             <div class="chart-title">Average Queue Count by Hour</div>
@@ -562,7 +204,6 @@
                 <div class="bar-chart" id="hourlyChart"></div>
             </div>
         </div>
-
         <div class="section-label">Queue Status Log</div>
         <div class="log-card">
             <div class="log-title">
@@ -576,267 +217,113 @@
     </main>
 
     <script>
-        // same status color logic used in the live page
         function applyStatusColor(element, statusText) {
             if (!element) return;
             element.classList.remove("not-busy", "moderate", "busy", "unknown");
             const status = (statusText || "").toUpperCase().trim();
-
-            if (status === "NOT BUSY" || status === "LOW") {
-                element.classList.add("not-busy");
-            } else if (status === "MODERATE" || status === "MEDIUM") {
-                element.classList.add("moderate");
-            } else if (status === "BUSY") {
-                element.classList.add("busy");
-            } else {
-                element.classList.add("unknown");
-            }
+            if (status === "NOT BUSY" || status === "LOW")         element.classList.add("not-busy");
+            else if (status === "MODERATE" || status === "MEDIUM") element.classList.add("moderate");
+            else if (status === "BUSY")                            element.classList.add("busy");
+            else                                                   element.classList.add("unknown");
         }
-
         async function fetchQueueData(store) {
-            try {
-                const res = await fetch(`/queue?store=${store}`);
-                if (!res.ok) throw new Error("bad response");
-                return await res.json();
-            } catch (e) {
-                return null;
-            }
+            try { const res = await fetch(`/queue?store=${store}`); if (!res.ok) throw new Error(); return await res.json(); }
+            catch (e) { return null; }
         }
-
         function formatTimeParts(isoString) {
             if (!isoString) return { hour: "--", mins: "--", secs: "--" };
             const d = new Date(isoString);
-            return {
-                hour: String(d.getHours()).padStart(2, "0"),
-                mins: String(d.getMinutes()).padStart(2, "0"),
-                secs: String(d.getSeconds()).padStart(2, "0"),
-            };
+            return { hour: String(d.getHours()).padStart(2,"0"), mins: String(d.getMinutes()).padStart(2,"0"), secs: String(d.getSeconds()).padStart(2,"0") };
         }
-
-        // current selected store and view
-        let currentStore = "timhortons";
-        let currentPeriod = "today";
-
+        let currentStore = "timhortons", currentPeriod = "today";
         function startAdminDashboard() {
-            bindStoreTabs();
-            bindSummaryTabs();
-            buildEmptyChart();
-            pollLive();
-            pollAnalytics();
-            setInterval(pollLive, 1500);
-            setInterval(pollAnalytics, 10000);
-            setInterval(updateClock, 1000);
+            bindStoreTabs(); bindSummaryTabs(); buildEmptyChart(); pollLive(); pollAnalytics();
+            setInterval(pollLive, 1500); setInterval(pollAnalytics, 10000); setInterval(updateClock, 1000);
         }
-
         function bindStoreTabs() {
-            document.querySelectorAll(".store-tab").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    document.querySelectorAll(".store-tab").forEach(b => b.classList.remove("active"));
-                    btn.classList.add("active");
-                    currentStore = btn.dataset.store;
-                    pollLive();
-                    pollAnalytics();
-                });
-            });
+            document.querySelectorAll(".store-tab").forEach(btn => btn.addEventListener("click", () => {
+                document.querySelectorAll(".store-tab").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active"); currentStore = btn.dataset.store; pollLive(); pollAnalytics();
+            }));
         }
-
         function bindSummaryTabs() {
-            document.querySelectorAll(".sum-tab").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    document.querySelectorAll(".sum-tab").forEach(b => b.classList.remove("active"));
-                    btn.classList.add("active");
-                    currentPeriod = btn.dataset.period;
-                    togglePeriodPanels();
-                });
-            });
+            document.querySelectorAll(".sum-tab").forEach(btn => btn.addEventListener("click", () => {
+                document.querySelectorAll(".sum-tab").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active"); currentPeriod = btn.dataset.period; togglePeriodPanels();
+            }));
         }
-
         function togglePeriodPanels() {
             const todayGrid = document.getElementById("todayAnalytics");
             const weeklyPanel = document.getElementById("weeklyPanel");
             const label = document.getElementById("analyticsLabel");
-
-            if (currentPeriod === "today") {
-                todayGrid.style.display = "";
-                weeklyPanel.classList.remove("visible");
-                label.textContent = "Today Summary";
-            } else {
-                todayGrid.style.display = "none";
-                weeklyPanel.classList.add("visible");
-                label.textContent = "Weekly Summary";
-            }
+            if (currentPeriod === "today") { todayGrid.style.display=""; weeklyPanel.classList.remove("visible"); label.textContent="Today Summary"; }
+            else { todayGrid.style.display="none"; weeklyPanel.classList.add("visible"); label.textContent="Weekly Summary"; }
         }
-
-        // fetch current queue data
         async function pollLive() {
-            const data = await fetchQueueData(currentStore);
-            if (!data) return;
-
+            const data = await fetchQueueData(currentStore); if (!data) return;
             setId("liveCount", data.people ?? "--");
-
             const statusEl = document.getElementById("liveStatus");
-            if (statusEl) {
-                statusEl.textContent = data.status ?? "UNKNOWN";
-                applyStatusColor(statusEl, data.status ?? "UNKNOWN");
-            }
-
-            // basic wait estimate for now, can improve later
+            if (statusEl) { statusEl.textContent = data.status ?? "UNKNOWN"; applyStatusColor(statusEl, data.status ?? "UNKNOWN"); }
             setId("liveWait", data.people != null ? data.people * 2 : "--");
-
-            const t = formatTimeParts(data.updated);
-            setId("liveTime", `${t.hour}:${t.mins}:${t.secs}`);
+            const t = formatTimeParts(data.updated); setId("liveTime", `${t.hour}:${t.mins}:${t.secs}`);
         }
-
-        // fetch analytics data from backend
         async function pollAnalytics() {
-            try {
-                const res = await fetch(`/admin-analytics?store=${currentStore}&period=${currentPeriod}`);
-                if (res.ok) renderAnalytics(await res.json());
-            } catch (e) {
-                // leave default values if backend is not ready
-            }
+            try { const res = await fetch(`/admin-analytics?store=${currentStore}&period=${currentPeriod}`); if (res.ok) renderAnalytics(await res.json()); } catch (e) {}
         }
-
         function renderAnalytics(data) {
             if (!data) return;
-
-            setId("peakHour", data.peak_hour ?? "--");
-            setId("slowHour", data.slow_hour ?? "--");
+            setId("peakHour", data.peak_hour ?? "--"); setId("slowHour", data.slow_hour ?? "--");
             setId("totalVisitors", data.total_visitors ?? "--");
             setId("avgOccupancy", data.avg_occupancy != null ? data.avg_occupancy.toFixed(1) : "--");
-            setId("maxOccupancy", data.max_occupancy ?? "--");
-            setId("minOccupancy", data.min_occupancy ?? "--");
+            setId("maxOccupancy", data.max_occupancy ?? "--"); setId("minOccupancy", data.min_occupancy ?? "--");
             setId("statusChanges", data.status_changes ?? "--");
-
             const dist = data.status_distribution;
             if (dist) {
-                const total = (dist.not_busy_mins || 0) + (dist.moderate_mins || 0) + (dist.busy_mins || 0);
-                const nbPct = total ? Math.round(dist.not_busy_mins / total * 100) : 0;
-                const modPct = total ? Math.round(dist.moderate_mins / total * 100) : 0;
-                const bPct = total ? Math.round(dist.busy_mins / total * 100) : 0;
-
-                setWidth("distNotBusy", nbPct);
-                setWidth("distModerate", modPct);
-                setWidth("distBusy", bPct);
-
-                setId("distNotBusyPct", `${nbPct}%`);
-                setId("distModeratePct", `${modPct}%`);
-                setId("distBusyPct", `${bPct}%`);
-                setId("distNotBusyTime", minsToHuman(dist.not_busy_mins));
-                setId("distModerateTime", minsToHuman(dist.moderate_mins));
-                setId("distBusyTime", minsToHuman(dist.busy_mins));
+                const total = (dist.not_busy_mins||0)+(dist.moderate_mins||0)+(dist.busy_mins||0);
+                const nbPct=total?Math.round(dist.not_busy_mins/total*100):0;
+                const modPct=total?Math.round(dist.moderate_mins/total*100):0;
+                const bPct=total?Math.round(dist.busy_mins/total*100):0;
+                setWidth("distNotBusy",nbPct); setWidth("distModerate",modPct); setWidth("distBusy",bPct);
+                setId("distNotBusyPct",`${nbPct}%`); setId("distModeratePct",`${modPct}%`); setId("distBusyPct",`${bPct}%`);
+                setId("distNotBusyTime",minsToHuman(dist.not_busy_mins)); setId("distModerateTime",minsToHuman(dist.moderate_mins)); setId("distBusyTime",minsToHuman(dist.busy_mins));
             }
-
             if (data.hourly_avg) renderHourlyChart(data.hourly_avg);
             if (data.status_log) renderStatusLog(data.status_log);
         }
-
-        // build hourly chart
-        function buildEmptyChart() {
-            const empty = Array.from({ length: 24 }, (_, h) => ({ hour: h, avg: null }));
-            renderHourlyChart(empty);
-        }
-
+        function buildEmptyChart() { renderHourlyChart(Array.from({length:24},(_,h)=>({hour:h,avg:null}))); }
         function renderHourlyChart(hourlyAvg) {
-            const container = document.getElementById("hourlyChart");
-            if (!container) return;
-
-            const maxVal = Math.max(...hourlyAvg.map(h => h.avg || 0), 1);
-            container.innerHTML = "";
-
+            const container = document.getElementById("hourlyChart"); if (!container) return;
+            const maxVal = Math.max(...hourlyAvg.map(h=>h.avg||0),1); container.innerHTML="";
             hourlyAvg.forEach(h => {
-                const col = document.createElement("div");
-                col.className = "bar-col";
-
-                const heightPct = h.avg != null ? Math.round((h.avg / maxVal) * 100) : 4;
-                const cls = h.avg == null ? "no-data"
-                    : h.avg > 6 ? "busy"
-                    : h.avg >= 3 ? "moderate"
-                    : "not-busy";
-
-                const valLabel = document.createElement("span");
-                valLabel.className = "bar-val";
-                valLabel.textContent = h.avg != null ? h.avg.toFixed(1) : "";
-
-                const bar = document.createElement("div");
-                bar.className = `bar ${cls}`;
-                bar.style.height = `${heightPct}%`;
-
-                const label = document.createElement("span");
-                label.className = "bar-label";
-                label.textContent = hourLabel(h.hour);
-
-                col.appendChild(valLabel);
-                col.appendChild(bar);
-                col.appendChild(label);
-                container.appendChild(col);
+                const col=document.createElement("div"); col.className="bar-col";
+                const heightPct=h.avg!=null?Math.round((h.avg/maxVal)*100):4;
+                const cls=h.avg==null?"no-data":h.avg>6?"busy":h.avg>=3?"moderate":"not-busy";
+                const valLabel=document.createElement("span"); valLabel.className="bar-val"; valLabel.textContent=h.avg!=null?h.avg.toFixed(1):"";
+                const bar=document.createElement("div"); bar.className=`bar ${cls}`; bar.style.height=`${heightPct}%`;
+                const label=document.createElement("span"); label.className="bar-label"; label.textContent=hourLabel(h.hour);
+                col.appendChild(valLabel); col.appendChild(bar); col.appendChild(label); container.appendChild(col);
             });
         }
-
-        // show status changes for today
         function renderStatusLog(entries) {
-            const list = document.getElementById("statusLog");
-            const badge = document.getElementById("logCountBadge");
-            if (!list) return;
-
-            if (!entries || entries.length === 0) {
-                list.innerHTML = `<div class="log-empty">No queue status changes recorded yet today.</div>`;
-                if (badge) badge.textContent = "0 changes";
-                return;
-            }
-
-            if (badge) {
-                badge.textContent = `${entries.length} change${entries.length !== 1 ? "s" : ""}`;
-            }
-
-            list.innerHTML = entries.slice().reverse().map(e => {
-                const t = formatTimeParts(e.time);
-                return `<div class="log-item">
-                    <span>${e.from} → <strong>${e.to}</strong></span>
-                    <span style="color:rgba(255,255,255,0.6)">${e.people != null ? e.people + " people" : ""}</span>
-                    <span class="log-time">${t.hour}:${t.mins}:${t.secs}</span>
-                </div>`;
+            const list=document.getElementById("statusLog"); const badge=document.getElementById("logCountBadge"); if (!list) return;
+            if (!entries||entries.length===0) { list.innerHTML=`<div class="log-empty">No queue status changes recorded yet today.</div>`; if(badge)badge.textContent="0 changes"; return; }
+            if (badge) badge.textContent=`${entries.length} change${entries.length!==1?"s":""}`;
+            list.innerHTML=entries.slice().reverse().map(e=>{
+                const t=formatTimeParts(e.time);
+                return `<div class="log-item"><span>${e.from} → <strong>${e.to}</strong></span><span style="color:rgba(255,255,255,0.6)">${e.people!=null?e.people+" people":""}</span><span class="log-time">${t.hour}:${t.mins}:${t.secs}</span></div>`;
             }).join("");
         }
-
-        // update refresh time in header
         function updateClock() {
-            const now = new Date();
-            setClass("refresh-hour", String(now.getHours()).padStart(2, "0"));
-            setClass("refresh-mins", String(now.getMinutes()).padStart(2, "0"));
-            setClass("refresh-seconds", String(now.getSeconds()).padStart(2, "0"));
+            const now=new Date();
+            setClass("refresh-hour",String(now.getHours()).padStart(2,"0"));
+            setClass("refresh-mins",String(now.getMinutes()).padStart(2,"0"));
+            setClass("refresh-seconds",String(now.getSeconds()).padStart(2,"0"));
         }
-
-        // small helper functions
-        function setId(id, val) {
-            const e = document.getElementById(id);
-            if (e) e.textContent = val;
-        }
-
-        function setClass(cls, val) {
-            const e = document.querySelector(`.${cls}`);
-            if (e) e.textContent = val;
-        }
-
-        function setWidth(id, pct) {
-            const e = document.getElementById(id);
-            if (e) e.style.width = `${pct}%`;
-        }
-
-        function minsToHuman(m) {
-            if (m == null) return "--";
-            if (m < 60) return `${m}m`;
-            return `${Math.floor(m / 60)}h ${m % 60}m`;
-        }
-
-        function hourLabel(h) {
-            if (h === 0) return "12a";
-            if (h < 12) return `${h}a`;
-            if (h === 12) return "12p";
-            return `${h - 12}p`;
-        }
-
-        // start dashboard
+        function setId(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+        function setClass(cls,val){const e=document.querySelector(`.${cls}`);if(e)e.textContent=val;}
+        function setWidth(id,pct){const e=document.getElementById(id);if(e)e.style.width=`${pct}%`;}
+        function minsToHuman(m){if(m==null)return"--";if(m<60)return`${m}m`;return`${Math.floor(m/60)}h ${m%60}m`;}
+        function hourLabel(h){if(h===0)return"12a";if(h<12)return`${h}a`;if(h===12)return"12p";return`${h-12}p`;}
         startAdminDashboard();
     </script>
 </body>
