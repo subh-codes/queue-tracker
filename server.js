@@ -1,81 +1,87 @@
-const express  = require("express");
-const path     = require("path");
-const fs       = require("fs");
-const initSqlJs = require("sql.js");
+const express = require("express");
+const path    = require("path");
+const { BlobServiceClient } = require("@azure/storage-blob");
 
-const app  = express();
+const app = express();
 app.use(express.json());
 
-const PORT   = process.env.PORT || 3000;
-const DB_DIR = path.join(__dirname, "data");
-const DB_PATH = path.join(DB_DIR, "queue_history.db");
+const PORT = process.env.PORT || 3000;
 
 /* ════════════════════════════════════════════════
-   DATABASE — sql.js (pure JS, no native build)
+   AZURE BLOB STORAGE — persistent data
+   Set AZURE_STORAGE_CONNECTION_STRING in Azure
+   App Service → Configuration → App Settings
    ════════════════════════════════════════════════ */
 
-let db = null;   // sql.js Database instance
+const CONN_STR       = process.env.AZURE_STORAGE_CONNECTION_STRING || null;
+const CONTAINER_NAME = "queue-analytics";
+const BLOB_NAME      = "timhortons_history.json";
 
-async function initDb() {
-  if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR);
+let blobClient = null;
 
-  const SQL = await initSqlJs();
-
-  // Load existing DB file if it exists, else create fresh
-  if (fs.existsSync(DB_PATH)) {
-    const fileBuffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(fileBuffer);
-  } else {
-    db = new SQL.Database();
+async function initBlob() {
+  if (!CONN_STR) {
+    console.warn("[BLOB] No connection string set — analytics will not persist across restarts.");
+    return;
   }
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS snapshots (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      store       TEXT    NOT NULL,
-      people      INTEGER NOT NULL,
-      status      TEXT    NOT NULL,
-      recorded_at TEXT    NOT NULL
-    )
-  `);
-
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_store_time ON snapshots(store, recorded_at)
-  `);
-
-  saveDb(); // persist initial state
-  console.log("[DB] SQLite ready (sql.js)");
-}
-
-// Save DB to disk — call after every write
-function saveDb() {
-  if (!db) return;
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
-}
-
-function insertSnapshot(store, people, status, now) {
-  if (!db) return;
-  db.run(
-    "INSERT INTO snapshots (store, people, status, recorded_at) VALUES (?, ?, ?, ?)",
-    [store, people, status, now]
-  );
-  saveDb();
-}
-
-function queryRows(store, since) {
-  if (!db) return [];
-  const stmt = db.prepare(
-    "SELECT people, status, recorded_at FROM snapshots WHERE store = ? AND recorded_at >= ? ORDER BY recorded_at ASC"
-  );
-  stmt.bind([store, since]);
-  const rows = [];
-  while (stmt.step()) {
-    const r = stmt.getAsObject();
-    rows.push(r);
+  try {
+    const serviceClient   = BlobServiceClient.fromConnectionString(CONN_STR);
+    const containerClient = serviceClient.getContainerClient(CONTAINER_NAME);
+    await containerClient.createIfNotExists();
+    blobClient = containerClient.getBlockBlobClient(BLOB_NAME);
+    console.log("[BLOB] Azure Blob Storage ready.");
+  } catch (e) {
+    console.error("[BLOB] Init failed:", e.message);
   }
-  stmt.free();
-  return rows;
+}
+
+// Load existing history from blob on startup
+async function loadHistory() {
+  if (!blobClient) return [];
+  try {
+    const exists = await blobClient.exists();
+    if (!exists) return [];
+    const download = await blobClient.download(0);
+    const chunks   = [];
+    for await (const chunk of download.readableStreamBody) {
+      chunks.push(chunk);
+    }
+    const text = Buffer.concat(chunks).toString("utf8");
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("[BLOB] Load failed:", e.message);
+    return [];
+  }
+}
+
+// Save history array back to blob
+async function saveHistory(history) {
+  if (!blobClient) return;
+  try {
+    const text = JSON.stringify(history);
+    await blobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
+  } catch (e) {
+    console.error("[BLOB] Save failed:", e.message);
+  }
+}
+
+// In-memory history buffer — synced to blob periodically
+let historyBuffer = [];
+let dirtyFlag     = false;
+
+// Save to blob every 30 seconds if there's new data
+setInterval(async () => {
+  if (dirtyFlag && historyBuffer.length > 0) {
+    await saveHistory(historyBuffer);
+    dirtyFlag = false;
+  }
+}, 30000);
+
+// Keep only last 7 days of data to avoid blob growing forever
+function pruneOldData(history) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+  return history.filter(r => new Date(r.recorded_at) > cutoff);
 }
 
 /* ════════════════════════════════════════════════
@@ -115,7 +121,7 @@ app.get("/queue", (req, res) => {
 });
 
 /* ════════════════════════════════════════════════
-   UPDATE FROM PI — now also saves to DB
+   UPDATE FROM PI — saves snapshot to buffer
    ════════════════════════════════════════════════ */
 
 app.post("/update", (req, res) => {
@@ -132,6 +138,7 @@ app.post("/update", (req, res) => {
 
   const now = new Date().toISOString();
 
+  // Update live memory
   storeData[storeName] = {
     people: peopleCount,
     status,
@@ -140,8 +147,12 @@ app.post("/update", (req, res) => {
     busiest_hour_end:   busiest_hour_end   ?? "--"
   };
 
-  try { insertSnapshot(storeName, peopleCount, status, now); }
-  catch (e) { console.error("[DB] Insert failed:", e.message); }
+  // Add to history buffer (only Tim Hortons for now)
+  if (storeName === "timhortons") {
+    historyBuffer.push({ store: storeName, people: peopleCount, status, recorded_at: now });
+    historyBuffer = pruneOldData(historyBuffer);
+    dirtyFlag = true;
+  }
 
   console.log(`[${storeName}] people: ${peopleCount} | status: ${status}`);
   res.json({ success: true, store: storeName });
@@ -166,22 +177,24 @@ app.get("/admin-analytics", (req, res) => {
     sinceDate.setUTCHours(0, 0, 0, 0);
   }
 
-  const rows = queryRows(store, sinceDate.toISOString());
+  const rows = historyBuffer.filter(
+    r => r.store === store && new Date(r.recorded_at) >= sinceDate
+  );
 
   if (!rows.length) return res.json(emptyAnalytics(store, period));
 
   // Basic stats
-  const counts   = rows.map(r => Number(r.people));
-  const avgOcc   = counts.reduce((a, b) => a + b, 0) / counts.length;
-  const maxOcc   = Math.max(...counts);
-  const minOcc   = Math.min(...counts);
+  const counts  = rows.map(r => r.people);
+  const avgOcc  = counts.reduce((a, b) => a + b, 0) / counts.length;
+  const maxOcc  = Math.max(...counts);
+  const minOcc  = Math.min(...counts);
 
   // Hourly averages
-  const buckets  = {};
+  const buckets = {};
   for (let h = 0; h < 24; h++) buckets[h] = [];
   rows.forEach(r => {
     const h = new Date(r.recorded_at).getHours();
-    buckets[h].push(Number(r.people));
+    buckets[h].push(r.people);
   });
   const hourlyAvg = Array.from({ length: 24 }, (_, h) => {
     const b = buckets[h];
@@ -189,21 +202,20 @@ app.get("/admin-analytics", (req, res) => {
   });
 
   // Peak / slow hour
-  const filled   = hourlyAvg.filter(h => h.avg !== null);
-  const peakH    = filled.length ? filled.reduce((a, b) => a.avg > b.avg ? a : b) : null;
-  const slowH    = filled.length ? filled.reduce((a, b) => a.avg < b.avg ? a : b) : null;
+  const filled  = hourlyAvg.filter(h => h.avg !== null);
+  const peakH   = filled.length ? filled.reduce((a, b) => a.avg > b.avg ? a : b) : null;
+  const slowH   = filled.length ? filled.reduce((a, b) => a.avg < b.avg ? a : b) : null;
 
-  // Total visitors (count upward jumps)
+  // Total visitors
   let totalVisitors = 0, prev = null;
   rows.forEach(r => {
-    const p = Number(r.people);
-    if (prev !== null && p > prev) totalVisitors += (p - prev);
-    prev = p;
+    if (prev !== null && r.people > prev) totalVisitors += (r.people - prev);
+    prev = r.people;
   });
 
-  // Status distribution (each row ≈ 1.5 s)
+  // Status distribution (each row ≈ 1.5s)
   const SECS = 1.5;
-  const dist = { not_busy_mins: 0, moderate_mins: 0, busy_mins: 0 };
+  const dist  = { not_busy_mins: 0, moderate_mins: 0, busy_mins: 0 };
   rows.forEach(r => { dist[statusKey(r.status)] += SECS / 60; });
   dist.not_busy_mins = Math.round(dist.not_busy_mins);
   dist.moderate_mins  = Math.round(dist.moderate_mins);
@@ -216,7 +228,7 @@ app.get("/admin-analytics", (req, res) => {
     const s = (r.status || "UNKNOWN").toUpperCase();
     if (prevStatus !== null && s !== prevStatus) {
       changes++;
-      statusLog.push({ time: r.recorded_at, from: prevStatus, to: s, people: Number(r.people) });
+      statusLog.push({ time: r.recorded_at, from: prevStatus, to: s, people: r.people });
     }
     prevStatus = s;
   });
@@ -272,11 +284,12 @@ function emptyAnalytics(store, period) {
    START
    ════════════════════════════════════════════════ */
 
-initDb().then(() => {
+initBlob().then(async () => {
+  // Load existing history from blob into memory buffer
+  historyBuffer = await loadHistory();
+  console.log(`[BLOB] Loaded ${historyBuffer.length} existing records.`);
+
   app.listen(PORT, () => {
     console.log(`Queue Tracker Server running on port ${PORT}`);
   });
-}).catch(err => {
-  console.error("Failed to init DB:", err);
-  process.exit(1);
 });
