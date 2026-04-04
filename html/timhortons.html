@@ -1,25 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tim Hortons - Queue Tracker</title>
-
-    <link rel="stylesheet" href="../css/trackinfo.css">
-
+    <link rel="stylesheet" href="/css/trackinfo.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
         rel="stylesheet">
-
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back">
-
-    <script src="../js/live.js" defer></script>
+    <script src="/js/live.js" defer></script>
 </head>
-
 <body>
     <header>
         <div class="backbutton">
@@ -28,11 +21,9 @@
                 <span id="back">Back</span>
             </a>
         </div>
-
         <div class="store-name">
             Tim Hortons — Queue Status
         </div>
-
         <div class="live-refresh">
             <span class="online-status">Live</span> Auto refresh every 1.5s
         </div>
@@ -42,23 +33,20 @@
         <div class="store-report">
             <div class="people-block">
                 <div class="people">
-                    <span class="number-of-people">12</span> people
+                    <span class="number-of-people">0</span> people
                 </div>
-
                 <div class="status-row">
-                    <span class="status">LOW</span>
+                    <span class="status">UNKNOWN</span>
                 </div>
             </div>
-
             <div class="esttime">
                 Estimated Wait: <span class="est">--</span> mins
             </div>
-
             <div class="lastupdstatus">
                 Last Updated:
-                <span class="hour">12</span>:
-                <span class="mins">41</span>:
-                <span class="secs">08</span>
+                <span class="hour">--</span>:
+                <span class="mins">--</span>:
+                <span class="secs">--</span>
             </div>
         </div>
 
@@ -66,10 +54,12 @@
             <div class="busiest-time">
                 <div class="foottitle">Busiest Time</div>
                 <div class="footerfoot">
-                    <span class="esthr1">12</span>:00 -
-                    <span class="esthr2">1</span>:00 PM
+                    <span class="esthr1">--</span>:00 -
+                    <span class="esthr2">--</span>:00 PM
                 </div>
             </div>
+
+            
 
             <div class="sensor-status">
                 <div class="foottitle">Sensor Status</div>
@@ -78,10 +68,9 @@
         </div>
     </main>
 
-    <script src="../js/live.js"></script>
+    <script src="/js/live.js"></script>
     <script>
         startLiveUpdates();
     </script>
 </body>
-
 </html>
