@@ -111,13 +111,27 @@ app.get("/", (req, res) => {
 });
 
 /* ════════════════════════════════════════════════
-   GET QUEUE DATA (unchanged)
+   SENSOR STATUS HELPER
+   If no update received in last 10 seconds → OFFLINE
+   ════════════════════════════════════════════════ */
+
+function getSensorStatus(updatedISO) {
+  if (!updatedISO) return "OFFLINE";
+  const diffSeconds = (Date.now() - new Date(updatedISO).getTime()) / 1000;
+  return diffSeconds <= 10 ? "ONLINE" : "OFFLINE";
+}
+
+/* ════════════════════════════════════════════════
+   GET QUEUE DATA
    ════════════════════════════════════════════════ */
 
 app.get("/queue", (req, res) => {
   const store = (req.query.store || "timhortons").toLowerCase();
   if (!storeData[store]) return res.status(404).json({ error: "Store not found" });
-  res.json(storeData[store]);
+  res.json({
+    ...storeData[store],
+    sensor: getSensorStatus(storeData[store].updated)
+  });
 });
 
 /* ════════════════════════════════════════════════
