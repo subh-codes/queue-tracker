@@ -171,7 +171,7 @@ app.get("/admin-analytics", (req, res) => {
   const store  = (req.query.store  || "timhortons").toLowerCase();
   const period = (req.query.period || "today").toLowerCase();
 
-  const now = new Date();
+  const h = new Date(new Date(r.recorded_at).getTime() - 6 * 60 * 60 * 1000).getUTCHours();
   let sinceDate;
 
   if (period === "weekly") {
