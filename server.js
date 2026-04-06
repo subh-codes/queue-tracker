@@ -15,7 +15,8 @@ const CONN_STR       = process.env.AZURE_STORAGE_CONNECTION_STRING || null;
 const CONTAINER_NAME = "queue-analytics";
 const BLOB_NAME      = "timhortons_history.json";
 
-let blobClient = null;
+let blobClient        = null;
+let ticketsBlobClient = null;
 
 async function initBlob() {
   if (!CONN_STR) {
@@ -27,7 +28,13 @@ async function initBlob() {
     const containerClient = serviceClient.getContainerClient(CONTAINER_NAME);
     await containerClient.createIfNotExists();
     blobClient = containerClient.getBlockBlobClient(BLOB_NAME);
-    console.log("[BLOB] Azure Blob Storage ready.");
+
+    // Tickets container
+    const ticketsContainer = serviceClient.getContainerClient("tickets");
+    await ticketsContainer.createIfNotExists();
+    ticketsBlobClient = ticketsContainer.getBlockBlobClient("tickets.json");
+
+    console.log("[BLOB] Azure Blob Storage ready (analytics + tickets).");
   } catch (e) {
     console.error("[BLOB] Init failed:", e.message);
   }
@@ -64,11 +71,37 @@ async function saveHistory(history) {
 let historyBuffer = [];
 let dirtyFlag     = false;
 
-// Customer reports — auto-expire after 24 hours
-let reportsBuffer = [];
+// Customer reports
+let reportsBuffer  = [];
+let ticketCounter  = 0;  // increments from loaded tickets on startup
 
 function pruneReports() {
   // Reports kept forever — no expiry
+}
+
+// Save a new ticket to Azure Blob tickets container
+async function saveTicket(ticket) {
+  if (!ticketsBlobClient) return;
+  try {
+    // Load existing tickets
+    let existing = [];
+    const exists = await ticketsBlobClient.exists();
+    if (exists) {
+      const download = await ticketsBlobClient.download(0);
+      const chunks = [];
+      for await (const chunk of download.readableStreamBody) {
+        chunks.push(chunk);
+      }
+      existing = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    }
+    // Append new ticket
+    existing.push(ticket);
+    const text = JSON.stringify(existing, null, 2);
+    await ticketsBlobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
+    console.log(`[TICKETS] Saved ticket #${existing.length} to blob.`);
+  } catch (e) {
+    console.error("[TICKETS] Save failed:", e.message);
+  }
 }
 
 setInterval(async () => {
@@ -310,15 +343,21 @@ app.post("/report", (req, res) => {
 
   pruneReports();
 
-  reportsBuffer.push({
+  const ticket = {
+    id:              String(++ticketCounter).padStart(7, "0"),
     store:           storeName,
     reported_status: (reported_status || "").toUpperCase(),
     comment:         (comment || "").slice(0, 200).trim(),
     submitted_at:    new Date().toISOString()
-  });
+  };
 
-  console.log(`[REPORT] ${storeName}: ${reported_status} — "${comment}"`);
-  res.json({ success: true });
+  reportsBuffer.push(ticket);
+
+  // Save to Azure Blob tickets container (non-blocking)
+  saveTicket(ticket).catch(e => console.error("[TICKETS] Async save error:", e.message));
+
+  console.log(`[REPORT] ${storeName}: ${ticket.reported_status} — "${ticket.comment}"`);
+  res.json({ success: true, ticket_id: ticket.id });
 });
 
 /* ════════════════════════════════════════════════
@@ -328,6 +367,25 @@ app.post("/report", (req, res) => {
 initBlob().then(async () => {
   historyBuffer = await loadHistory();
   console.log(`[BLOB] Loaded ${historyBuffer.length} existing records.`);
+
+  // Load existing tickets from blob into memory
+  try {
+    if (ticketsBlobClient) {
+      const exists = await ticketsBlobClient.exists();
+      if (exists) {
+        const download = await ticketsBlobClient.download(0);
+        const chunks = [];
+        for await (const chunk of download.readableStreamBody) {
+          chunks.push(chunk);
+        }
+        reportsBuffer = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        ticketCounter  = reportsBuffer.length;
+        console.log(`[TICKETS] Loaded ${reportsBuffer.length} existing tickets. Counter at ${ticketCounter}.`);
+      }
+    }
+  } catch (e) {
+    console.error("[TICKETS] Load failed:", e.message);
+  }
 
   app.listen(PORT, () => {
     console.log(`Queue Tracker Server running on port ${PORT}`);
