@@ -12,6 +12,131 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back">
     <script src="/js/live.js" defer></script>
+
+    <style>
+        /* ── Report Section ── */
+        .report-section {
+            width: 100%;
+            max-width: 1100px;
+            border: 2px solid rgb(200, 30, 40);
+            border-radius: 20px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .report-title {
+            font-family: Orbitron, sans-serif;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: rgb(255, 100, 100);
+            border-bottom: 1px solid rgb(200, 30, 40);
+            padding-bottom: 10px;
+        }
+
+        .report-subtitle {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .report-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .report-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 42px;
+        }
+
+        .report-btn:hover {
+            border-color: white;
+            color: white;
+        }
+
+        .report-btn.selected-empty    { background: rgb(14, 183, 70);  border-color: rgb(14, 183, 70);  color: white; }
+        .report-btn.selected-moderate { background: rgb(255, 170, 0);  border-color: rgb(255, 170, 0);  color: black; }
+        .report-btn.selected-busy     { background: rgb(220, 53, 69);  border-color: rgb(220, 53, 69);  color: white; }
+
+        .report-comment {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 0.95rem;
+            font-family: sans-serif;
+            resize: vertical;
+            min-height: 80px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .report-comment:focus {
+            border-color: rgb(200, 30, 40);
+        }
+
+        .report-comment::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .report-submit {
+            align-self: flex-start;
+            padding: 11px 28px;
+            border-radius: 10px;
+            border: none;
+            background: rgb(14, 183, 70);
+            color: white;
+            font-family: Orbitron, sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            min-height: 44px;
+        }
+
+        .report-submit:hover  { background: rgb(10, 150, 55); }
+        .report-submit:active { transform: scale(0.98); }
+        .report-submit:disabled { background: rgba(14, 183, 70, 0.35); cursor: not-allowed; }
+
+        .report-feedback {
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .report-feedback.success {
+            display: block;
+            background: rgba(14, 183, 70, 0.15);
+            border: 1px solid rgb(14, 183, 70);
+            color: rgb(14, 183, 70);
+        }
+
+        .report-feedback.error {
+            display: block;
+            background: rgba(220, 53, 69, 0.15);
+            border: 1px solid rgb(220, 53, 69);
+            color: rgb(220, 53, 69);
+        }
+
+        @media (max-width: 768px) {
+            .report-section { max-width: 420px; }
+            .report-buttons { gap: 8px; }
+            .report-btn { font-size: 0.75rem; padding: 9px 14px; }
+            .report-submit { width: 100%; }
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -30,6 +155,7 @@
     </header>
 
     <main>
+        <!-- Live Status Card -->
         <div class="store-report">
             <div class="people-block">
                 <div class="people">
@@ -50,6 +176,7 @@
             </div>
         </div>
 
+        <!-- Footer Cards -->
         <div class="footer">
             <div class="busiest-time">
                 <div class="foottitle">Busiest Time</div>
@@ -58,17 +185,98 @@
                     <span class="esthr2">--</span>:00 PM
                 </div>
             </div>
-
             <div class="sensor-status">
                 <div class="foottitle">Sensor Status</div>
                 <div class="footerfoot" id="sensorStatus">Checking...</div>
             </div>
+        </div>
+
+        <!-- Customer Report Section -->
+        <div class="report-section">
+            <div class="report-title">📝 Report Queue Status</div>
+            <div class="report-subtitle">How does the queue actually look right now? Help others by sharing what you see.</div>
+
+            <div class="report-buttons">
+                <button class="report-btn" data-status="NOT BUSY" onclick="selectReport(this, 'selected-empty')">🟢 Looks Empty</button>
+                <button class="report-btn" data-status="MODERATE" onclick="selectReport(this, 'selected-moderate')">🟡 Looks Moderate</button>
+                <button class="report-btn" data-status="BUSY"     onclick="selectReport(this, 'selected-busy')">🔴 Looks Busy</button>
+            </div>
+
+            <textarea
+                class="report-comment"
+                id="reportComment"
+                placeholder="Optional: add a comment (e.g. 'line is moving fast', 'only 2 cashiers open')..."
+                maxlength="200">
+            </textarea>
+
+            <button class="report-submit" id="reportSubmit" onclick="submitReport()">Submit Report</button>
+            <div class="report-feedback" id="reportFeedback"></div>
         </div>
     </main>
 
     <script src="/js/live.js"></script>
     <script>
         startLiveUpdates();
+
+        let selectedStatus = null;
+
+        function selectReport(btn, cls) {
+            // Deselect all
+            document.querySelectorAll('.report-btn').forEach(b => {
+                b.classList.remove('selected-empty', 'selected-moderate', 'selected-busy');
+            });
+            // Select clicked
+            btn.classList.add(cls);
+            selectedStatus = btn.dataset.status;
+
+            // Hide any previous feedback
+            document.getElementById('reportFeedback').className = 'report-feedback';
+        }
+
+        async function submitReport() {
+            const feedback = document.getElementById('reportFeedback');
+            const comment  = document.getElementById('reportComment').value.trim();
+            const btn      = document.getElementById('reportSubmit');
+
+            if (!selectedStatus) {
+                feedback.textContent = 'Please select how the queue looks before submitting.';
+                feedback.className   = 'report-feedback error';
+                return;
+            }
+
+            btn.disabled     = true;
+            btn.textContent  = 'Submitting...';
+
+            try {
+                const res = await fetch('/report', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                        store:            'timhortons',
+                        reported_status:  selectedStatus,
+                        comment:          comment
+                    })
+                });
+
+                if (res.ok) {
+                    feedback.textContent = '✅ Thank you! Your report has been submitted.';
+                    feedback.className   = 'report-feedback success';
+                    // Reset form
+                    selectedStatus = null;
+                    document.querySelectorAll('.report-btn').forEach(b =>
+                        b.classList.remove('selected-empty', 'selected-moderate', 'selected-busy'));
+                    document.getElementById('reportComment').value = '';
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (e) {
+                feedback.textContent = '❌ Could not submit report. Please try again.';
+                feedback.className   = 'report-feedback error';
+            }
+
+            btn.disabled    = false;
+            btn.textContent = 'Submit Report';
+        }
     </script>
 </body>
 </html>
