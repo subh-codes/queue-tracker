@@ -171,15 +171,13 @@ app.get("/admin-analytics", (req, res) => {
   const store  = (req.query.store  || "timhortons").toLowerCase();
   const period = (req.query.period || "today").toLowerCase();
 
-  const h = new Date(new Date(r.recorded_at).getTime() - 6 * 60 * 60 * 1000).getUTCHours();
+  const now = new Date();
   let sinceDate;
 
   if (period === "weekly") {
-    // Last 7 days rolling
     sinceDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   } else {
-    // Last 24 hours rolling — data stays available even when Pi is offline
-    // This prevents the dashboard resetting at midnight or after Pi downtime
+    // Last 24 hours rolling — stays available even when Pi is offline
     sinceDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   }
 
@@ -190,16 +188,17 @@ app.get("/admin-analytics", (req, res) => {
   if (!rows.length) return res.json(emptyAnalytics(store, period));
 
   // Basic stats
-  const counts  = rows.map(r => r.people);
-  const avgOcc  = counts.reduce((a, b) => a + b, 0) / counts.length;
-  const maxOcc  = Math.max(...counts);
-  const minOcc  = Math.min(...counts);
+  const counts = rows.map(r => r.people);
+  const avgOcc = counts.reduce((a, b) => a + b, 0) / counts.length;
+  const maxOcc = Math.max(...counts);
+  const minOcc = Math.min(...counts);
 
-  // Hourly averages
+  // Hourly averages — converted to Calgary time (UTC-6 = MDT)
+  const CALGARY_OFFSET_MS = 6 * 60 * 60 * 1000;
   const buckets = {};
   for (let h = 0; h < 24; h++) buckets[h] = [];
   rows.forEach(r => {
-    const h = new Date(r.recorded_at).getHours();
+    const h = new Date(new Date(r.recorded_at).getTime() - CALGARY_OFFSET_MS).getUTCHours();
     buckets[h].push(r.people);
   });
   const hourlyAvg = Array.from({ length: 24 }, (_, h) => {
