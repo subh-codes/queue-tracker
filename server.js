@@ -8,9 +8,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 /* ════════════════════════════════════════════════
-   AZURE BLOB STORAGE — persistent data
-   Set AZURE_STORAGE_CONNECTION_STRING in Azure
-   App Service → Configuration → App Settings
+   AZURE BLOB STORAGE
    ════════════════════════════════════════════════ */
 
 const CONN_STR       = process.env.AZURE_STORAGE_CONNECTION_STRING || null;
@@ -35,7 +33,6 @@ async function initBlob() {
   }
 }
 
-// Load existing history from blob on startup
 async function loadHistory() {
   if (!blobClient) return [];
   try {
@@ -54,7 +51,6 @@ async function loadHistory() {
   }
 }
 
-// Save history array back to blob
 async function saveHistory(history) {
   if (!blobClient) return;
   try {
@@ -65,11 +61,9 @@ async function saveHistory(history) {
   }
 }
 
-// In-memory history buffer — synced to blob periodically
 let historyBuffer = [];
 let dirtyFlag     = false;
 
-// Save to blob every 30 seconds if there's new data
 setInterval(async () => {
   if (dirtyFlag && historyBuffer.length > 0) {
     await saveHistory(historyBuffer);
@@ -77,7 +71,6 @@ setInterval(async () => {
   }
 }, 30000);
 
-// Keep only last 7 days of data to avoid blob growing forever
 function pruneOldData(history) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 7);
@@ -85,7 +78,7 @@ function pruneOldData(history) {
 }
 
 /* ════════════════════════════════════════════════
-   STORE DATA — live memory (unchanged)
+   STORE DATA
    ════════════════════════════════════════════════ */
 
 const storeData = {
@@ -95,7 +88,7 @@ const storeData = {
 };
 
 /* ════════════════════════════════════════════════
-   STATIC FILES (unchanged)
+   STATIC FILES
    ════════════════════════════════════════════════ */
 
 app.use("/html", express.static(path.join(__dirname, "html")));
@@ -103,7 +96,7 @@ app.use("/css",  express.static(path.join(__dirname, "css")));
 app.use("/js",   express.static(path.join(__dirname, "js")));
 
 /* ════════════════════════════════════════════════
-   ROOT (unchanged)
+   ROOT
    ════════════════════════════════════════════════ */
 
 app.get("/", (req, res) => {
@@ -112,7 +105,6 @@ app.get("/", (req, res) => {
 
 /* ════════════════════════════════════════════════
    SENSOR STATUS HELPER
-   If no update received in last 10 seconds → OFFLINE
    ════════════════════════════════════════════════ */
 
 function getSensorStatus(updatedISO) {
@@ -135,7 +127,7 @@ app.get("/queue", (req, res) => {
 });
 
 /* ════════════════════════════════════════════════
-   UPDATE FROM PI — saves snapshot to buffer
+   UPDATE FROM PI
    ════════════════════════════════════════════════ */
 
 app.post("/update", (req, res) => {
@@ -152,7 +144,6 @@ app.post("/update", (req, res) => {
 
   const now = new Date().toISOString();
 
-  // Update live memory
   storeData[storeName] = {
     people: peopleCount,
     status,
@@ -161,7 +152,6 @@ app.post("/update", (req, res) => {
     busiest_hour_end:   busiest_hour_end   ?? "--"
   };
 
-  // Add to history buffer (only Tim Hortons for now)
   if (storeName === "timhortons") {
     historyBuffer.push({ store: storeName, people: peopleCount, status, recorded_at: now });
     historyBuffer = pruneOldData(historyBuffer);
@@ -183,12 +173,14 @@ app.get("/admin-analytics", (req, res) => {
 
   const now = new Date();
   let sinceDate;
+
   if (period === "weekly") {
-    sinceDate = new Date(now);
-    sinceDate.setDate(sinceDate.getDate() - 7);
+    // Last 7 days rolling
+    sinceDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   } else {
-    sinceDate = new Date(now);
-    sinceDate.setUTCHours(0, 0, 0, 0);
+    // Last 24 hours rolling — data stays available even when Pi is offline
+    // This prevents the dashboard resetting at midnight or after Pi downtime
+    sinceDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   }
 
   const rows = historyBuffer.filter(
@@ -216,9 +208,9 @@ app.get("/admin-analytics", (req, res) => {
   });
 
   // Peak / slow hour
-  const filled  = hourlyAvg.filter(h => h.avg !== null);
-  const peakH   = filled.length ? filled.reduce((a, b) => a.avg > b.avg ? a : b) : null;
-  const slowH   = filled.length ? filled.reduce((a, b) => a.avg < b.avg ? a : b) : null;
+  const filled = hourlyAvg.filter(h => h.avg !== null);
+  const peakH  = filled.length ? filled.reduce((a, b) => a.avg > b.avg ? a : b) : null;
+  const slowH  = filled.length ? filled.reduce((a, b) => a.avg < b.avg ? a : b) : null;
 
   // Total visitors
   let totalVisitors = 0, prev = null;
@@ -299,7 +291,6 @@ function emptyAnalytics(store, period) {
    ════════════════════════════════════════════════ */
 
 initBlob().then(async () => {
-  // Load existing history from blob into memory buffer
   historyBuffer = await loadHistory();
   console.log(`[BLOB] Loaded ${historyBuffer.length} existing records.`);
 
