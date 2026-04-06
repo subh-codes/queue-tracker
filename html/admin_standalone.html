@@ -214,6 +214,18 @@
                 <div class="log-empty">No queue status changes recorded yet today.</div>
             </div>
         </div>
+        <!-- Customer Reports -->
+        <div class="section-label">Customer Reports</div>
+        <div class="log-card">
+            <div class="log-title">
+                <span>Customer Submitted Reports (Last 24h)</span>
+                <span class="log-count-badge" id="reportCountBadge">0 reports</span>
+            </div>
+            <div class="log-list" id="customerReports">
+                <div class="log-empty">No customer reports submitted yet.</div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -289,6 +301,7 @@
             }
             if (data.hourly_avg) renderHourlyChart(data.hourly_avg);
             if (data.status_log) renderStatusLog(data.status_log);
+            if (data.customer_reports) renderCustomerReports(data.customer_reports);
         }
         function buildEmptyChart() { renderHourlyChart(Array.from({length:24},(_,h)=>({hour:h,avg:null}))); }
         function renderHourlyChart(hourlyAvg) {
@@ -324,6 +337,30 @@
         function setWidth(id,pct){const e=document.getElementById(id);if(e)e.style.width=`${pct}%`;}
         function minsToHuman(m){if(m==null)return"--";if(m<60)return`${m}m`;return`${Math.floor(m/60)}h ${m%60}m`;}
         function hourLabel(h){if(h===0)return"12a";if(h<12)return`${h}a`;if(h===12)return"12p";return`${h-12}p`;}
+
+        function renderCustomerReports(reports) {
+            const list  = document.getElementById("customerReports");
+            const badge = document.getElementById("reportCountBadge");
+            if (!list) return;
+            if (!reports || reports.length === 0) {
+                list.innerHTML = '<div class="log-empty">No customer reports submitted yet.</div>';
+                if (badge) badge.textContent = "0 reports";
+                return;
+            }
+            if (badge) badge.textContent = reports.length + " report" + (reports.length !== 1 ? "s" : "");
+            list.innerHTML = reports.slice().reverse().map(r => {
+                const t = formatTimeParts(r.submitted_at);
+                const statusColor = r.reported_status === "NOT BUSY" ? "rgb(14,183,70)"
+                                  : r.reported_status === "MODERATE"  ? "rgb(255,170,0)"
+                                  : "rgb(220,53,69)";
+                return '<div class="log-item">'
+                    + '<span style="color:' + statusColor + ';font-weight:bold">' + r.reported_status + '</span>'
+                    + '<span style="color:rgba(255,255,255,0.6);font-size:0.85rem">' + (r.comment || "") + '</span>'
+                    + '<span class="log-time">' + t.hour + ':' + t.mins + ':' + t.secs + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+
         startAdminDashboard();
     </script>
 </body>
