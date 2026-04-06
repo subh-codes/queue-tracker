@@ -64,6 +64,13 @@ async function saveHistory(history) {
 let historyBuffer = [];
 let dirtyFlag     = false;
 
+// Customer reports — auto-expire after 24 hours
+let reportsBuffer = [];
+
+function pruneReports() {
+  // Reports kept forever — no expiry
+}
+
 setInterval(async () => {
   if (dirtyFlag && historyBuffer.length > 0) {
     await saveHistory(historyBuffer);
@@ -249,7 +256,8 @@ app.get("/admin-analytics", (req, res) => {
     status_changes:      changes,
     status_distribution: dist,
     hourly_avg:          hourlyAvg,
-    status_log:          statusLog
+    status_log:          statusLog,
+    customer_reports:    reportsBuffer.filter(r => r.store === store)
   });
 });
 
@@ -284,6 +292,34 @@ function emptyAnalytics(store, period) {
     status_log: []
   };
 }
+
+
+/* ════════════════════════════════════════════════
+   CUSTOMER REPORT ENDPOINT
+   POST /report
+   ════════════════════════════════════════════════ */
+
+app.post("/report", (req, res) => {
+  const { store, reported_status, comment } = req.body;
+  const storeName = (store || "timhortons").toLowerCase();
+
+  const validStatuses = ["NOT BUSY", "MODERATE", "BUSY"];
+  if (!validStatuses.includes((reported_status || "").toUpperCase())) {
+    return res.status(400).json({ error: "Invalid status" });
+  }
+
+  pruneReports();
+
+  reportsBuffer.push({
+    store:           storeName,
+    reported_status: (reported_status || "").toUpperCase(),
+    comment:         (comment || "").slice(0, 200).trim(),
+    submitted_at:    new Date().toISOString()
+  });
+
+  console.log(`[REPORT] ${storeName}: ${reported_status} — "${comment}"`);
+  res.json({ success: true });
+});
 
 /* ════════════════════════════════════════════════
    START
