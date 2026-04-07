@@ -95,7 +95,10 @@
 </head>
 <body>
     <header>
-        <a href="./stores.html" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <a href="./stores.html" style="text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
+            <a href="./tickets.html" style="text-decoration:none;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;letter-spacing:0.05em;padding:6px 14px;border-radius:8px;transition:background 0.2s ease;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage Tickets</a>
+        </div>
         <div class="header-left">
             <span class="material-symbols-outlined">location_on</span>
             <div class="logo-text">Queue Monitoring System</div>
@@ -214,7 +217,6 @@
                 <div class="log-empty">No queue status changes recorded yet today.</div>
             </div>
         </div>
-        <!-- Customer Reports -->
         <div class="section-label">Customer Reports</div>
         <div class="log-card">
             <div class="log-title">
@@ -224,8 +226,10 @@
             <div class="log-list" id="customerReports">
                 <div class="log-empty">No customer reports submitted yet.</div>
             </div>
+            <div style="margin-top:8px;">
+                <a href="./tickets.html" style="text-decoration:none;display:inline-block;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;padding:8px 18px;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage All Tickets →</a>
+            </div>
         </div>
-
     </main>
 
     <script>
@@ -337,7 +341,6 @@
         function setWidth(id,pct){const e=document.getElementById(id);if(e)e.style.width=`${pct}%`;}
         function minsToHuman(m){if(m==null)return"--";if(m<60)return`${m}m`;return`${Math.floor(m/60)}h ${m%60}m`;}
         function hourLabel(h){if(h===0)return"12a";if(h<12)return`${h}a`;if(h===12)return"12p";return`${h-12}p`;}
-
         function renderCustomerReports(reports) {
             const list  = document.getElementById("customerReports");
             const badge = document.getElementById("reportCountBadge");
@@ -360,7 +363,6 @@
                     + '</div>';
             }).join('');
         }
-
         startAdminDashboard();
     </script>
 </body>
