@@ -346,6 +346,8 @@ app.post("/report", (req, res) => {
   const rawStatus = (reported_status || "").toUpperCase();
   const priority = rawStatus === "BUSY" ? "high" : rawStatus === "MODERATE" ? "medium" : "low";
 
+  const ticketType = (req.body.type || "queue_status");
+
   const ticket = {
     id:              String(++ticketCounter).padStart(7, "0"),
     store:           storeName,
@@ -353,9 +355,10 @@ app.post("/report", (req, res) => {
     comment:         (comment || "").slice(0, 200).trim(),
     submitted_at:    new Date().toISOString(),
     ticket_status:   "open",
-    priority:        priority,
+    priority:        rawStatus === "ISSUE" ? "high" : priority,
     admin_note:      "",
-    updated_at:      null
+    updated_at:      null,
+    type:            ticketType
   };
 
   reportsBuffer.push(ticket);
