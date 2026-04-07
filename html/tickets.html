@@ -322,14 +322,12 @@
     }
 
     function buildCard(t) {
-        const sc = scClass;
         const prio = t.priority || "low";
         const ts   = t.ticket_status || "open";
-
+        const sc   = t.reported_status === "NOT BUSY" ? "not-busy"
+                   : t.reported_status === "MODERATE"  ? "moderate"
+                   : t.reported_status === "BUSY"       ? "busy" : "issue";
         const statusLabel = ts === "in_progress" ? "In Progress" : ts.charAt(0).toUpperCase() + ts.slice(1);
-        const scClass = t.reported_status === "NOT BUSY" ? "not-busy"
-                      : t.reported_status === "MODERATE"  ? "moderate"
-                      : t.reported_status === "BUSY"       ? "busy" : "issue";
         const typeBadge = t.type === "problem_report"
             ? '<span class="badge type-issue">⚠ PROBLEM REPORT</span>'
             : '<span class="badge type-queue">QUEUE REPORT</span>';
