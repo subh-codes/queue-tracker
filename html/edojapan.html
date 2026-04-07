@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edo Japan - Queue Tracker</title>
+    <link rel="stylesheet" href="/css/trackinfo.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back">
+    <script src="/js/live.js" defer></script>
+    <style>
+        .report-section {
+            width: 100%;
+            max-width: 1100px;
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .report-title {
+            font-family: Orbitron, sans-serif;
+            font-size: 1.15rem;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 10px;
+        }
+        .report-subtitle {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: -4px;
+        }
+        .issue-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .issue-btn {
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 42px;
+            white-space: nowrap;
+        }
+        .issue-btn:hover  { border-color: white; color: white; }
+        .issue-btn.selected { background: rgba(255,255,255,0.1); border-color: white; color: white; }
+        .report-comment {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.04);
+            color: white;
+            font-size: 0.92rem;
+            font-family: sans-serif;
+            resize: vertical;
+            min-height: 80px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .report-comment:focus { border-color: rgb(14,183,70); }
+        .report-comment::placeholder { color: rgba(255,255,255,0.2); }
+        .report-submit {
+            align-self: flex-start;
+            padding: 11px 28px;
+            border-radius: 10px;
+            border: none;
+            background: rgb(14,183,70);
+            color: white;
+            font-family: Orbitron, sans-serif;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            min-height: 44px;
+        }
+        .report-submit:hover   { background: rgb(10,150,55); }
+        .report-submit:active  { transform: scale(0.98); }
+        .report-submit:disabled { background: rgba(14,183,70,0.35); cursor: not-allowed; }
+        .report-feedback {
+            font-size: 0.88rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            display: none;
+        }
+        .report-feedback.success { display:block; background:rgba(14,183,70,0.1); border:1px solid rgb(14,183,70); color:rgb(14,183,70); }
+        .report-feedback.error   { display:block; background:rgba(220,53,69,0.1); border:1px solid rgb(220,53,69); color:rgb(220,53,69); }
+        @media (max-width: 768px) {
+            .report-section { max-width: 420px; }
+            .issue-btn { font-size: 0.75rem; padding: 9px 12px; }
+            .report-submit { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="backbutton">
+            <a href="stores.html" class="back-link">
+                <span id="backarrow" class="material-symbols-outlined">arrow_back</span>
+                <span id="back">Back</span>
+            </a>
+        </div>
+        <div class="store-name">Edo Japan — Queue Status</div>
+        <div class="live-refresh">
+            <span class="online-status">Live</span> Auto refresh every 1.5s
+        </div>
+    </header>
+
+    <main>
+        <!-- Coming Soon Notice -->
+        <div style="width:100%;max-width:1100px;border:2px dashed rgba(255,255,255,0.15);border-radius:20px;padding:22px 20px;text-align:center;color:rgba(255,255,255,0.4);font-family:Orbitron,sans-serif;font-size:0.9rem;">
+            📷 Edo Japan camera coming soon — Live detection not active yet
+        </div>
+        <!-- Live Status -->
+        <div class="store-report">
+            <div class="people-block">
+                <div class="people">
+                    <span class="number-of-people">0</span> people
+                </div>
+                <div class="status-row">
+                    <span class="status unknown">UNKNOWN</span>
+                </div>
+            </div>
+            <div class="esttime">
+                Estimated Wait: <span class="est">--</span> mins
+            </div>
+            <div class="lastupdstatus">
+                Last Updated:
+                <span class="hour">--</span>:
+                <span class="mins">--</span>:
+                <span class="secs">--</span>
+            </div>
+        </div>
+
+        <!-- Footer cards -->
+        <div class="footer">
+            <div class="busiest-time">
+                <div class="foottitle">Busiest Time</div>
+                <div class="footerfoot">
+                    <span class="esthr1">--</span>:00 -
+                    <span class="esthr2">--</span>:00 PM
+                </div>
+            </div>
+            <div class="sensor-status">
+                <div class="foottitle">Sensor Status</div>
+                <div class="footerfoot" id="sensorStatus">Checking...</div>
+            </div>
+        </div>
+
+        <!-- Issue Report Section -->
+        <div class="report-section">
+            <div class="report-title">⚠️ Report a Problem</div>
+            <div class="report-subtitle">Something wrong with the system? Let us know and we'll look into it.</div>
+
+            <div class="issue-buttons">
+                <button class="issue-btn" data-issue="Sensor appears offline"    onclick="selectIssue(this)">📡 Sensor Offline</button>
+                <button class="issue-btn" data-issue="People count seems wrong"  onclick="selectIssue(this)">🔢 Wrong Count</button>
+                <button class="issue-btn" data-issue="Website not updating"      onclick="selectIssue(this)">🔄 Not Updating</button>
+                <button class="issue-btn" data-issue="Camera angle issue"        onclick="selectIssue(this)">📷 Camera Issue</button>
+                <button class="issue-btn" data-issue="Other technical issue"     onclick="selectIssue(this)">🛠 Other Issue</button>
+            </div>
+
+            <textarea
+                class="report-comment"
+                id="issueComment"
+                placeholder="Describe the problem in more detail (optional)..."
+                maxlength="200"></textarea>
+
+            <button class="report-submit" id="issueSubmit" onclick="submitIssue()">Submit Problem Report</button>
+            <div class="report-feedback" id="issueFeedback"></div>
+        </div>
+    </main>
+
+    <script src="/js/live.js"></script>
+    <script>
+        startLiveUpdates();
+
+        let selectedIssue = null;
+
+        function selectIssue(btn) {
+            document.querySelectorAll('.issue-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedIssue = btn.dataset.issue;
+            document.getElementById('issueFeedback').className = 'report-feedback';
+        }
+
+        async function submitIssue() {
+            const feedback = document.getElementById('issueFeedback');
+            const comment  = document.getElementById('issueComment').value.trim();
+            const btn      = document.getElementById('issueSubmit');
+
+            if (!selectedIssue) {
+                feedback.textContent = 'Please select the type of problem before submitting.';
+                feedback.className   = 'report-feedback error';
+                return;
+            }
+
+            btn.disabled    = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const res = await fetch('/report', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                        store:           'edojapan',
+                        reported_status: 'ISSUE',
+                        comment:         selectedIssue + (comment ? ': ' + comment : ''),
+                        type:            'problem_report'
+                    })
+                });
+
+                if (res.ok) {
+                    feedback.textContent = '✅ Problem reported! Our team will look into it.';
+                    feedback.className   = 'report-feedback success';
+                    selectedIssue        = null;
+                    document.querySelectorAll('.issue-btn').forEach(b => b.classList.remove('selected'));
+                    document.getElementById('issueComment').value = '';
+                } else {
+                    throw new Error();
+                }
+            } catch (e) {
+                feedback.textContent = '❌ Could not submit. Please try again.';
+                feedback.className   = 'report-feedback error';
+            }
+
+            btn.disabled    = false;
+            btn.textContent = 'Submit Problem Report';
+        }
+    </script>
+</body>
+</html>
