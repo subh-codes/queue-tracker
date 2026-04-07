@@ -1,437 +1,369 @@
-const express = require("express");
-const path    = require("path");
-const { BlobServiceClient } = require("@azure/storage-blob");
-
-const app = express();
-app.use(express.json());
-
-const PORT = process.env.PORT || 3000;
-
-/* ════════════════════════════════════════════════
-   AZURE BLOB STORAGE
-   ════════════════════════════════════════════════ */
-
-const CONN_STR       = process.env.AZURE_STORAGE_CONNECTION_STRING || null;
-const CONTAINER_NAME = "queue-analytics";
-const BLOB_NAME      = "timhortons_history.json";
-
-let blobClient        = null;
-let ticketsBlobClient = null;
-
-async function initBlob() {
-  if (!CONN_STR) {
-    console.warn("[BLOB] No connection string set — analytics will not persist across restarts.");
-    return;
-  }
-  try {
-    const serviceClient   = BlobServiceClient.fromConnectionString(CONN_STR);
-    const containerClient = serviceClient.getContainerClient(CONTAINER_NAME);
-    await containerClient.createIfNotExists();
-    blobClient = containerClient.getBlockBlobClient(BLOB_NAME);
-
-    // Tickets container
-    const ticketsContainer = serviceClient.getContainerClient("tickets");
-    await ticketsContainer.createIfNotExists();
-    ticketsBlobClient = ticketsContainer.getBlockBlobClient("tickets.json");
-
-    console.log("[BLOB] Azure Blob Storage ready (analytics + tickets).");
-  } catch (e) {
-    console.error("[BLOB] Init failed:", e.message);
-  }
-}
-
-async function loadHistory() {
-  if (!blobClient) return [];
-  try {
-    const exists = await blobClient.exists();
-    if (!exists) return [];
-    const download = await blobClient.download(0);
-    const chunks   = [];
-    for await (const chunk of download.readableStreamBody) {
-      chunks.push(chunk);
-    }
-    const text = Buffer.concat(chunks).toString("utf8");
-    return JSON.parse(text);
-  } catch (e) {
-    console.error("[BLOB] Load failed:", e.message);
-    return [];
-  }
-}
-
-async function saveHistory(history) {
-  if (!blobClient) return;
-  try {
-    const text = JSON.stringify(history);
-    await blobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
-  } catch (e) {
-    console.error("[BLOB] Save failed:", e.message);
-  }
-}
-
-let historyBuffer = [];
-let dirtyFlag     = false;
-
-// Customer reports
-let reportsBuffer  = [];
-let ticketCounter  = 0;  // increments from loaded tickets on startup
-
-function pruneReports() {
-  // Reports kept forever — no expiry
-}
-
-// Save a new ticket to Azure Blob tickets container
-async function saveTicket(ticket) {
-  if (!ticketsBlobClient) return;
-  try {
-    // Load existing tickets
-    let existing = [];
-    const exists = await ticketsBlobClient.exists();
-    if (exists) {
-      const download = await ticketsBlobClient.download(0);
-      const chunks = [];
-      for await (const chunk of download.readableStreamBody) {
-        chunks.push(chunk);
-      }
-      existing = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    }
-    // Append new ticket
-    existing.push(ticket);
-    const text = JSON.stringify(existing, null, 2);
-    await ticketsBlobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
-    console.log(`[TICKETS] Saved ticket #${existing.length} to blob.`);
-  } catch (e) {
-    console.error("[TICKETS] Save failed:", e.message);
-  }
-}
-
-setInterval(async () => {
-  if (dirtyFlag && historyBuffer.length > 0) {
-    await saveHistory(historyBuffer);
-    dirtyFlag = false;
-  }
-}, 30000);
-
-function pruneOldData(history) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 7);
-  return history.filter(r => new Date(r.recorded_at) > cutoff);
-}
-
-/* ════════════════════════════════════════════════
-   STORE DATA
-   ════════════════════════════════════════════════ */
-
-const storeData = {
-  timhortons: { people: 0, status: "UNKNOWN", updated: null, busiest_hour_start: "--", busiest_hour_end: "--" },
-  starbucks:  { people: 0, status: "UNKNOWN", updated: null, busiest_hour_start: "--", busiest_hour_end: "--" },
-  edojapan:   { people: 0, status: "UNKNOWN", updated: null, busiest_hour_start: "--", busiest_hour_end: "--" }
-};
-
-/* ════════════════════════════════════════════════
-   STATIC FILES
-   ════════════════════════════════════════════════ */
-
-app.use("/html", express.static(path.join(__dirname, "html")));
-app.use("/css",  express.static(path.join(__dirname, "css")));
-app.use("/js",   express.static(path.join(__dirname, "js")));
-
-/* ════════════════════════════════════════════════
-   ROOT
-   ════════════════════════════════════════════════ */
-
-app.get("/", (req, res) => {
-  res.redirect("/html/main.html");
-});
-
-/* ════════════════════════════════════════════════
-   SENSOR STATUS HELPER
-   ════════════════════════════════════════════════ */
-
-function getSensorStatus(updatedISO) {
-  if (!updatedISO) return "OFFLINE";
-  const diffSeconds = (Date.now() - new Date(updatedISO).getTime()) / 1000;
-  return diffSeconds <= 10 ? "ONLINE" : "OFFLINE";
-}
-
-/* ════════════════════════════════════════════════
-   GET QUEUE DATA
-   ════════════════════════════════════════════════ */
-
-app.get("/queue", (req, res) => {
-  const store = (req.query.store || "timhortons").toLowerCase();
-  if (!storeData[store]) return res.status(404).json({ error: "Store not found" });
-  res.json({
-    ...storeData[store],
-    sensor: getSensorStatus(storeData[store].updated)
-  });
-});
-
-/* ════════════════════════════════════════════════
-   UPDATE FROM PI
-   ════════════════════════════════════════════════ */
-
-app.post("/update", (req, res) => {
-  const { store, people, busiest_hour_start, busiest_hour_end } = req.body;
-  const storeName = (store || "").toLowerCase();
-
-  if (!storeData[storeName]) return res.status(400).json({ error: "Invalid store" });
-
-  const peopleCount = Number(people ?? 0);
-  let status;
-  if (peopleCount < 3)       status = "NOT BUSY";
-  else if (peopleCount <= 6) status = "MODERATE";
-  else                       status = "BUSY";
-
-  const now = new Date().toISOString();
-
-  storeData[storeName] = {
-    people: peopleCount,
-    status,
-    updated: now,
-    busiest_hour_start: busiest_hour_start ?? "--",
-    busiest_hour_end:   busiest_hour_end   ?? "--"
-  };
-
-  if (storeName === "timhortons") {
-    historyBuffer.push({ store: storeName, people: peopleCount, status, recorded_at: now });
-    historyBuffer = pruneOldData(historyBuffer);
-    dirtyFlag = true;
-  }
-
-  console.log(`[${storeName}] people: ${peopleCount} | status: ${status}`);
-  res.json({ success: true, store: storeName });
-});
-
-/* ════════════════════════════════════════════════
-   ADMIN ANALYTICS
-   GET /admin-analytics?store=timhortons&period=today
-   ════════════════════════════════════════════════ */
-
-app.get("/admin-analytics", (req, res) => {
-  const store  = (req.query.store  || "timhortons").toLowerCase();
-  const period = (req.query.period || "today").toLowerCase();
-
-  const now = new Date();
-  let sinceDate;
-
-  if (period === "weekly") {
-    sinceDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  } else {
-    // Last 24 hours rolling — stays available even when Pi is offline
-    sinceDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  }
-
-  const rows = historyBuffer.filter(
-    r => r.store === store && new Date(r.recorded_at) >= sinceDate
-  );
-
-  if (!rows.length) return res.json(emptyAnalytics(store, period));
-
-  // Basic stats
-  const counts = rows.map(r => r.people);
-  const avgOcc = counts.reduce((a, b) => a + b, 0) / counts.length;
-  const maxOcc = Math.max(...counts);
-  const minOcc = Math.min(...counts);
-
-  // Hourly averages — converted to Calgary time (UTC-6 = MDT)
-  const CALGARY_OFFSET_MS = 6 * 60 * 60 * 1000;
-  const buckets = {};
-  for (let h = 0; h < 24; h++) buckets[h] = [];
-  rows.forEach(r => {
-    const h = new Date(new Date(r.recorded_at).getTime() - CALGARY_OFFSET_MS).getUTCHours();
-    buckets[h].push(r.people);
-  });
-  const hourlyAvg = Array.from({ length: 24 }, (_, h) => {
-    const b = buckets[h];
-    return { hour: h, avg: b.length ? Math.round(b.reduce((a, c) => a + c, 0) / b.length * 10) / 10 : null };
-  });
-
-  // Peak / slow hour
-  const filled = hourlyAvg.filter(h => h.avg !== null);
-  const peakH  = filled.length ? filled.reduce((a, b) => a.avg > b.avg ? a : b) : null;
-  const slowH  = filled.length ? filled.reduce((a, b) => a.avg < b.avg ? a : b) : null;
-
-  // Total visitors
-  let totalVisitors = 0, prev = null;
-  rows.forEach(r => {
-    if (prev !== null && r.people > prev) totalVisitors += (r.people - prev);
-    prev = r.people;
-  });
-
-  // Status distribution (each row ≈ 1.5s)
-  const SECS = 1.5;
-  const dist  = { not_busy_mins: 0, moderate_mins: 0, busy_mins: 0 };
-  rows.forEach(r => { dist[statusKey(r.status)] += SECS / 60; });
-  dist.not_busy_mins = Math.round(dist.not_busy_mins);
-  dist.moderate_mins  = Math.round(dist.moderate_mins);
-  dist.busy_mins      = Math.round(dist.busy_mins);
-
-  // Status change log
-  let changes = 0, prevStatus = null;
-  const statusLog = [];
-  rows.forEach(r => {
-    const s = (r.status || "UNKNOWN").toUpperCase();
-    if (prevStatus !== null && s !== prevStatus) {
-      changes++;
-      statusLog.push({ time: r.recorded_at, from: prevStatus, to: s, people: r.people });
-    }
-    prevStatus = s;
-  });
-
-  res.json({
-    store, period,
-    peak_hour:           peakH ? formatHour(peakH.hour) : "--",
-    slow_hour:           slowH ? formatHour(slowH.hour) : "--",
-    total_visitors:      totalVisitors,
-    avg_occupancy:       Math.round(avgOcc * 10) / 10,
-    max_occupancy:       maxOcc,
-    min_occupancy:       minOcc,
-    status_changes:      changes,
-    status_distribution: dist,
-    hourly_avg:          hourlyAvg,
-    status_log:          statusLog,
-    customer_reports:    reportsBuffer.filter(r => r.store === store)
-  });
-});
-
-/* ════════════════════════════════════════════════
-   HELPERS
-   ════════════════════════════════════════════════ */
-
-function statusKey(s) {
-  const u = (s || "").toUpperCase();
-  if (u === "NOT BUSY") return "not_busy_mins";
-  if (u === "MODERATE") return "moderate_mins";
-  if (u === "BUSY")     return "busy_mins";
-  return "not_busy_mins";
-}
-
-function formatHour(h) {
-  if (h === 0)  return "12:00 AM";
-  if (h < 12)   return `${h}:00 AM`;
-  if (h === 12) return "12:00 PM";
-  return `${h - 12}:00 PM`;
-}
-
-function emptyAnalytics(store, period) {
-  return {
-    store, period,
-    peak_hour: "--", slow_hour: "--",
-    total_visitors: 0, avg_occupancy: null,
-    max_occupancy: null, min_occupancy: null,
-    status_changes: 0,
-    status_distribution: { not_busy_mins: 0, moderate_mins: 0, busy_mins: 0 },
-    hourly_avg: Array.from({ length: 24 }, (_, h) => ({ hour: h, avg: null })),
-    status_log: []
-  };
-}
-
-
-/* ════════════════════════════════════════════════
-   CUSTOMER REPORT ENDPOINT
-   POST /report
-   ════════════════════════════════════════════════ */
-
-app.post("/report", (req, res) => {
-  const { store, reported_status, comment } = req.body;
-  const storeName = (store || "timhortons").toLowerCase();
-
-  const validStatuses = ["NOT BUSY", "MODERATE", "BUSY"];
-  if (!validStatuses.includes((reported_status || "").toUpperCase())) {
-    return res.status(400).json({ error: "Invalid status" });
-  }
-
-  pruneReports();
-
-  const ticket = {
-    id:              String(++ticketCounter).padStart(7, "0"),
-    store:           storeName,
-    reported_status: (reported_status || "").toUpperCase(),
-    comment:         (comment || "").slice(0, 200).trim(),
-    submitted_at:    new Date().toISOString()
-  };
-
-  reportsBuffer.push(ticket);
-
-  // Save to Azure Blob tickets container (non-blocking)
-  saveTicket(ticket).catch(e => console.error("[TICKETS] Async save error:", e.message));
-
-  console.log(`[REPORT] ${storeName}: ${ticket.reported_status} — "${ticket.comment}"`);
-  res.json({ success: true, ticket_id: ticket.id });
-});
-
-
-
-/* ════════════════════════════════════════════════
-   GET ALL TICKETS FROM BLOB
-   GET /tickets
-   ════════════════════════════════════════════════ */
-
-app.get("/tickets", async (req, res) => {
-  try {
-    if (!ticketsBlobClient) return res.json([]);
-    const exists = await ticketsBlobClient.exists();
-    if (!exists) return res.json([]);
-    const download = await ticketsBlobClient.download(0);
-    const chunks = [];
-    for await (const chunk of download.readableStreamBody) chunks.push(chunk);
-    const tickets = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    res.json(tickets);
-  } catch (e) {
-    console.error("[TICKETS] Fetch failed:", e.message);
-    res.json([]);
-  }
-});
-
-/* ════════════════════════════════════════════════
-   CLEAR ALL TICKETS
-   POST /clear-tickets
-   ════════════════════════════════════════════════ */
-
-app.post("/clear-tickets", async (req, res) => {
-  try {
-    reportsBuffer = [];
-    ticketCounter = 0;
-    if (ticketsBlobClient) {
-      const text = JSON.stringify([]);
-      await ticketsBlobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
-    }
-    console.log("[TICKETS] All tickets cleared.");
-    res.json({ success: true });
-  } catch (e) {
-    console.error("[TICKETS] Clear failed:", e.message);
-    res.status(500).json({ error: "Clear failed" });
-  }
-});
-
-/* ════════════════════════════════════════════════
-   START
-   ════════════════════════════════════════════════ */
-
-initBlob().then(async () => {
-  historyBuffer = await loadHistory();
-  console.log(`[BLOB] Loaded ${historyBuffer.length} existing records.`);
-
-  // Load existing tickets from blob into memory
-  try {
-    if (ticketsBlobClient) {
-      const exists = await ticketsBlobClient.exists();
-      if (exists) {
-        const download = await ticketsBlobClient.download(0);
-        const chunks = [];
-        for await (const chunk of download.readableStreamBody) {
-          chunks.push(chunk);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Queue Monitoring System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=location_on" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; background-color: #05060A; color: white; min-height: 100vh; padding: 12px; }
+        header { min-height: 60px; border-bottom: 1px solid white; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 4px 14px; flex-wrap: wrap; }
+        .header-left { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+        .logo-text { font-size: 20px; font-weight: bold; font-family: Orbitron, sans-serif; }
+        .admin-badge { font-size: 0.7rem; font-family: Orbitron, sans-serif; background-color: rgb(14, 183, 70); color: #05060A; padding: 3px 8px; border-radius: 6px; font-weight: bold; letter-spacing: 0.05em; }
+        .live-refresh { font-size: 1rem; }
+        .online-status { color: rgb(14, 255, 70); font-weight: bold; margin-right: 4px; }
+        main { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 36px; gap: 24px; }
+        .page-heading { font-size: clamp(1.7rem, 6vw, 2.2rem); font-weight: bold; font-family: Orbitron, sans-serif; text-align: center; }
+        .section-label { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); font-family: Orbitron, sans-serif; width: 100%; max-width: 1100px; }
+        .store-selector { width: 100%; max-width: 1100px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .store-tab { padding: 9px 20px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.3); background: transparent; color: rgba(255,255,255,0.55); font-family: Orbitron, sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; }
+        .store-tab:hover { border-color: white; color: white; }
+        .store-tab.active { background: white; color: #05060A; border-color: white; }
+        .live-row { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .live-card { border: 2px solid white; border-radius: 20px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; min-height: 120px; }
+        .live-card-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; }
+        .live-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; }
+        .live-card-sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+        .status { min-width: 130px; min-height: 42px; padding: 8px 18px; border-radius: 14px; display: inline-flex; justify-content: center; align-items: center; background-color: rgb(108,117,125); color: white; white-space: nowrap; font-family: Orbitron, sans-serif; font-size: 1rem; line-height: 1; transition: background-color 0.25s ease, color 0.25s ease; }
+        .status.not-busy { background-color: rgb(14,183,70); color: white; }
+        .status.moderate  { background-color: rgb(255,170,0); color: black; }
+        .status.busy      { background-color: rgb(220,53,69); color: white; }
+        .status.unknown   { background-color: rgb(108,117,125); color: white; }
+        .summary-tabs { width: 100%; max-width: 1100px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .sum-tab { padding: 8px 18px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease; }
+        .sum-tab:hover { border-color: white; color: white; }
+        .sum-tab.active { background: white; color: #05060A; border-color: white; }
+        .analytics-grid { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .analytics-card { border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; min-height: 160px; }
+        .analytics-card.full-width { grid-column: 1 / -1; }
+        .analytics-card-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
+        .analytics-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1; }
+        .analytics-card-sub { font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-top: auto; }
+        .dist-bar-wrap { width: 100%; height: 16px; border-radius: 8px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); }
+        .dist-segment { height: 100%; transition: width 0.5s ease; }
+        .dist-segment.not-busy { background-color: rgb(14,183,70); }
+        .dist-segment.moderate  { background-color: rgb(255,170,0); }
+        .dist-segment.busy      { background-color: rgb(220,53,69); }
+        .dist-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; margin-top: 4px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+        .legend-dot.not-busy { background-color: rgb(14,183,70); }
+        .legend-dot.moderate  { background-color: rgb(255,170,0); }
+        .legend-dot.busy      { background-color: rgb(220,53,69); }
+        .chart-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 16px; }
+        .chart-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
+        .chart-area { width: 100%; overflow-x: auto; }
+        .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; min-width: 500px; padding-bottom: 28px; position: relative; }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+        .bar { width: 100%; border-radius: 4px 4px 0 0; background-color: rgb(14,183,70); min-height: 2px; transition: height 0.4s ease; }
+        .bar.moderate { background-color: rgb(255,170,0); }
+        .bar.busy     { background-color: rgb(220,53,69); }
+        .bar.no-data  { background-color: rgba(255,255,255,0.1); }
+        .bar-label { font-size: 0.58rem; color: rgba(255,255,255,0.4); position: absolute; bottom: -20px; white-space: nowrap; }
+        .bar-val { font-size: 0.6rem; color: rgba(255,255,255,0.55); position: absolute; top: -16px; }
+        .log-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; }
+        .log-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .log-count-badge { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 20px; }
+        .log-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 0.9rem; gap: 8px; flex-wrap: wrap; }
+        .log-time { color: rgba(255,255,255,0.5); font-size: 0.8rem; white-space: nowrap; }
+        .log-empty { text-align: center; color: rgba(255,255,255,0.3); font-size: 0.9rem; padding: 20px 0; }
+        .weekly-placeholder { width: 100%; max-width: 1100px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 36px 18px; text-align: center; color: rgba(255,255,255,0.3); display: none; flex-direction: column; gap: 10px; align-items: center; }
+        .weekly-placeholder.visible { display: flex; }
+        .weekly-placeholder-title { font-family: Orbitron, sans-serif; font-size: 1rem; }
+        .log-list::-webkit-scrollbar { width: 4px; }
+        .log-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        @media (max-width: 768px) {
+            body { padding: 14px; }
+            header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            main { margin-top: 28px; }
+            .live-row, .analytics-grid { grid-template-columns: 1fr; max-width: 420px; }
+            .chart-card, .log-card, .summary-tabs, .section-label, .store-selector, .weekly-placeholder { max-width: 420px; }
         }
-        reportsBuffer = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-        ticketCounter  = reportsBuffer.length;
-        console.log(`[TICKETS] Loaded ${reportsBuffer.length} existing tickets. Counter at ${ticketCounter}.`);
-      }
-    }
-  } catch (e) {
-    console.error("[TICKETS] Load failed:", e.message);
-  }
+        @media (max-width: 480px) {
+            .page-heading { font-size: 1.45rem; }
+            .live-card-value { font-size: 1.8rem; }
+            .analytics-card-value { font-size: 1.4rem; }
+            .status { min-width: 120px; min-height: 38px; padding: 7px 14px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <a href="./stores.html" style="text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
+            <a href="./tickets.html" style="text-decoration:none;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;letter-spacing:0.05em;padding:6px 14px;border-radius:8px;transition:background 0.2s ease;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage Tickets</a>
+        </div>
+        <div class="header-left">
+            <span class="material-symbols-outlined">location_on</span>
+            <div class="logo-text">Queue Monitoring System</div>
+            <span class="admin-badge">ADMIN</span>
+        </div>
+        <div class="live-refresh">
+            <span class="online-status">●</span>
+            Last refresh:
+            <span class="refresh-hour">--</span>:<span class="refresh-mins">--</span>:<span class="refresh-seconds">--</span>
+        </div>
+    </header>
 
-  app.listen(PORT, () => {
-    console.log(`Queue Tracker Server running on port ${PORT}`);
-  });
-});
+    <main>
+        <h1 class="page-heading">Queue Admin Dashboard</h1>
+        <div class="store-selector">
+            <button class="store-tab active" data-store="timhortons" type="button">Tim Hortons</button>
+            <button class="store-tab" data-store="starbucks" type="button">Starbucks</button>
+            <button class="store-tab" data-store="edojapan" type="button">Edo Japan</button>
+        </div>
+        <div class="section-label">Current Queue Status</div>
+        <div class="live-row">
+            <div class="live-card">
+                <div class="live-card-label">People In Queue</div>
+                <div class="live-card-value" id="liveCount">--</div>
+                <div class="live-card-sub">people right now</div>
+            </div>
+            <div class="live-card">
+                <div class="live-card-label">Queue Status</div>
+                <span class="status unknown" id="liveStatus">UNKNOWN</span>
+            </div>
+            <div class="live-card">
+                <div class="live-card-label">Wait Time</div>
+                <div class="live-card-value" id="liveWait">--</div>
+                <div class="live-card-sub">approx. minutes</div>
+            </div>
+            <div class="live-card">
+                <div class="live-card-label">Last Updated</div>
+                <div class="live-card-value" style="font-size:1.4rem;" id="liveTime">--:--:--</div>
+                <div class="live-card-sub">last queue update</div>
+            </div>
+        </div>
+        <div class="section-label">View Summary</div>
+        <div class="summary-tabs">
+            <button class="sum-tab active" data-period="today" type="button">Today</button>
+            <button class="sum-tab" data-period="weekly" type="button">Weekly</button>
+        </div>
+        <div class="section-label" id="analyticsLabel">Today Summary</div>
+        <div class="analytics-grid" id="todayAnalytics">
+            <div class="analytics-card">
+                <div class="analytics-card-title">Peak Hour</div>
+                <div class="analytics-card-value" id="peakHour">--</div>
+                <div class="analytics-card-sub">Most busy hour recorded today</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Slowest Hour</div>
+                <div class="analytics-card-value" id="slowHour">--</div>
+                <div class="analytics-card-sub">Least busy hour recorded today</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Total Visitors</div>
+                <div class="analytics-card-value" id="totalVisitors">--</div>
+                <div class="analytics-card-sub">Rough total based on count changes</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Average Occupancy</div>
+                <div class="analytics-card-value" id="avgOccupancy">--</div>
+                <div class="analytics-card-sub">Average number of people today</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Max Occupancy</div>
+                <div class="analytics-card-value" id="maxOccupancy">--</div>
+                <div class="analytics-card-sub">Highest queue count today</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Min Occupancy</div>
+                <div class="analytics-card-value" id="minOccupancy">--</div>
+                <div class="analytics-card-sub">Lowest queue count today</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-card-title">Status Changes</div>
+                <div class="analytics-card-value" id="statusChanges">--</div>
+                <div class="analytics-card-sub">How many times the status changed today</div>
+            </div>
+            <div class="analytics-card full-width">
+                <div class="analytics-card-title">Time Spent in Each Status</div>
+                <div class="dist-bar-wrap">
+                    <div class="dist-segment not-busy" id="distNotBusy" style="width:0%"></div>
+                    <div class="dist-segment moderate"  id="distModerate" style="width:0%"></div>
+                    <div class="dist-segment busy"       id="distBusy"    style="width:0%"></div>
+                </div>
+                <div class="dist-legend">
+                    <span><span class="legend-dot not-busy"></span>Not Busy: <span id="distNotBusyPct">--%</span> (<span id="distNotBusyTime">--</span>)</span>
+                    <span><span class="legend-dot moderate"></span>Moderate: <span id="distModeratePct">--%</span> (<span id="distModerateTime">--</span>)</span>
+                    <span><span class="legend-dot busy"></span>Busy: <span id="distBusyPct">--%</span> (<span id="distBusyTime">--</span>)</span>
+                </div>
+            </div>
+        </div>
+        <div class="weekly-placeholder" id="weeklyPanel">
+            <div class="weekly-placeholder-title">Weekly Summary</div>
+            <div style="font-size:0.85rem;">This section will be used later when more weekly data is stored in the system.</div>
+        </div>
+        <div class="section-label">Hourly Queue Trend</div>
+        <div class="chart-card">
+            <div class="chart-title">Average Queue Count by Hour</div>
+            <div class="chart-area">
+                <div class="bar-chart" id="hourlyChart"></div>
+            </div>
+        </div>
+        <div class="section-label">Queue Status Log</div>
+        <div class="log-card">
+            <div class="log-title">
+                <span>Today's Queue Status Changes</span>
+                <span class="log-count-badge" id="logCountBadge">0 changes</span>
+            </div>
+            <div class="log-list" id="statusLog">
+                <div class="log-empty">No queue status changes recorded yet today.</div>
+            </div>
+        </div>
+        <div class="section-label">Customer Reports</div>
+        <div class="log-card">
+            <div class="log-title">
+                <span>Customer Submitted Reports (Last 24h)</span>
+                <span class="log-count-badge" id="reportCountBadge">0 reports</span>
+            </div>
+            <div class="log-list" id="customerReports">
+                <div class="log-empty">No customer reports submitted yet.</div>
+            </div>
+            <div style="margin-top:8px;">
+                <a href="./tickets.html" style="text-decoration:none;display:inline-block;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;padding:8px 18px;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage All Tickets →</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function applyStatusColor(element, statusText) {
+            if (!element) return;
+            element.classList.remove("not-busy", "moderate", "busy", "unknown");
+            const status = (statusText || "").toUpperCase().trim();
+            if (status === "NOT BUSY" || status === "LOW")         element.classList.add("not-busy");
+            else if (status === "MODERATE" || status === "MEDIUM") element.classList.add("moderate");
+            else if (status === "BUSY")                            element.classList.add("busy");
+            else                                                   element.classList.add("unknown");
+        }
+        async function fetchQueueData(store) {
+            try { const res = await fetch(`/queue?store=${store}`); if (!res.ok) throw new Error(); return await res.json(); }
+            catch (e) { return null; }
+        }
+        function formatTimeParts(isoString) {
+            if (!isoString) return { hour: "--", mins: "--", secs: "--" };
+            const d = new Date(isoString);
+            return { hour: String(d.getHours()).padStart(2,"0"), mins: String(d.getMinutes()).padStart(2,"0"), secs: String(d.getSeconds()).padStart(2,"0") };
+        }
+        let currentStore = "timhortons", currentPeriod = "today";
+        function startAdminDashboard() {
+            bindStoreTabs(); bindSummaryTabs(); buildEmptyChart(); pollLive(); pollAnalytics();
+            setInterval(pollLive, 1500); setInterval(pollAnalytics, 10000); setInterval(updateClock, 1000);
+        }
+        function bindStoreTabs() {
+            document.querySelectorAll(".store-tab").forEach(btn => btn.addEventListener("click", () => {
+                document.querySelectorAll(".store-tab").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active"); currentStore = btn.dataset.store; pollLive(); pollAnalytics();
+            }));
+        }
+        function bindSummaryTabs() {
+            document.querySelectorAll(".sum-tab").forEach(btn => btn.addEventListener("click", () => {
+                document.querySelectorAll(".sum-tab").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active"); currentPeriod = btn.dataset.period; togglePeriodPanels();
+            }));
+        }
+        function togglePeriodPanels() {
+            const todayGrid = document.getElementById("todayAnalytics");
+            const weeklyPanel = document.getElementById("weeklyPanel");
+            const label = document.getElementById("analyticsLabel");
+            if (currentPeriod === "today") { todayGrid.style.display=""; weeklyPanel.classList.remove("visible"); label.textContent="Today Summary"; }
+            else { todayGrid.style.display="none"; weeklyPanel.classList.add("visible"); label.textContent="Weekly Summary"; }
+        }
+        async function pollLive() {
+            const data = await fetchQueueData(currentStore); if (!data) return;
+            setId("liveCount", data.people ?? "--");
+            const statusEl = document.getElementById("liveStatus");
+            if (statusEl) { statusEl.textContent = data.status ?? "UNKNOWN"; applyStatusColor(statusEl, data.status ?? "UNKNOWN"); }
+            setId("liveWait", data.people != null ? data.people * 2 : "--");
+            const t = formatTimeParts(data.updated); setId("liveTime", `${t.hour}:${t.mins}:${t.secs}`);
+        }
+        async function pollAnalytics() {
+            try { const res = await fetch(`/admin-analytics?store=${currentStore}&period=${currentPeriod}`); if (res.ok) renderAnalytics(await res.json()); } catch (e) {}
+        }
+        function renderAnalytics(data) {
+            if (!data) return;
+            setId("peakHour", data.peak_hour ?? "--"); setId("slowHour", data.slow_hour ?? "--");
+            setId("totalVisitors", data.total_visitors ?? "--");
+            setId("avgOccupancy", data.avg_occupancy != null ? data.avg_occupancy.toFixed(1) : "--");
+            setId("maxOccupancy", data.max_occupancy ?? "--"); setId("minOccupancy", data.min_occupancy ?? "--");
+            setId("statusChanges", data.status_changes ?? "--");
+            const dist = data.status_distribution;
+            if (dist) {
+                const total = (dist.not_busy_mins||0)+(dist.moderate_mins||0)+(dist.busy_mins||0);
+                const nbPct=total?Math.round(dist.not_busy_mins/total*100):0;
+                const modPct=total?Math.round(dist.moderate_mins/total*100):0;
+                const bPct=total?Math.round(dist.busy_mins/total*100):0;
+                setWidth("distNotBusy",nbPct); setWidth("distModerate",modPct); setWidth("distBusy",bPct);
+                setId("distNotBusyPct",`${nbPct}%`); setId("distModeratePct",`${modPct}%`); setId("distBusyPct",`${bPct}%`);
+                setId("distNotBusyTime",minsToHuman(dist.not_busy_mins)); setId("distModerateTime",minsToHuman(dist.moderate_mins)); setId("distBusyTime",minsToHuman(dist.busy_mins));
+            }
+            if (data.hourly_avg) renderHourlyChart(data.hourly_avg);
+            if (data.status_log) renderStatusLog(data.status_log);
+            if (data.customer_reports) renderCustomerReports(data.customer_reports);
+        }
+        function buildEmptyChart() { renderHourlyChart(Array.from({length:24},(_,h)=>({hour:h,avg:null}))); }
+        function renderHourlyChart(hourlyAvg) {
+            const container = document.getElementById("hourlyChart"); if (!container) return;
+            const maxVal = Math.max(...hourlyAvg.map(h=>h.avg||0),1); container.innerHTML="";
+            hourlyAvg.forEach(h => {
+                const col=document.createElement("div"); col.className="bar-col";
+                const heightPct=h.avg!=null?Math.round((h.avg/maxVal)*100):4;
+                const cls=h.avg==null?"no-data":h.avg>6?"busy":h.avg>=3?"moderate":"not-busy";
+                const valLabel=document.createElement("span"); valLabel.className="bar-val"; valLabel.textContent=h.avg!=null?h.avg.toFixed(1):"";
+                const bar=document.createElement("div"); bar.className=`bar ${cls}`; bar.style.height=`${heightPct}%`;
+                const label=document.createElement("span"); label.className="bar-label"; label.textContent=hourLabel(h.hour);
+                col.appendChild(valLabel); col.appendChild(bar); col.appendChild(label); container.appendChild(col);
+            });
+        }
+        function renderStatusLog(entries) {
+            const list=document.getElementById("statusLog"); const badge=document.getElementById("logCountBadge"); if (!list) return;
+            if (!entries||entries.length===0) { list.innerHTML=`<div class="log-empty">No queue status changes recorded yet today.</div>`; if(badge)badge.textContent="0 changes"; return; }
+            if (badge) badge.textContent=`${entries.length} change${entries.length!==1?"s":""}`;
+            list.innerHTML=entries.slice().reverse().map(e=>{
+                const t=formatTimeParts(e.time);
+                return `<div class="log-item"><span>${e.from} → <strong>${e.to}</strong></span><span style="color:rgba(255,255,255,0.6)">${e.people!=null?e.people+" people":""}</span><span class="log-time">${t.hour}:${t.mins}:${t.secs}</span></div>`;
+            }).join("");
+        }
+        function updateClock() {
+            const now=new Date();
+            setClass("refresh-hour",String(now.getHours()).padStart(2,"0"));
+            setClass("refresh-mins",String(now.getMinutes()).padStart(2,"0"));
+            setClass("refresh-seconds",String(now.getSeconds()).padStart(2,"0"));
+        }
+        function setId(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+        function setClass(cls,val){const e=document.querySelector(`.${cls}`);if(e)e.textContent=val;}
+        function setWidth(id,pct){const e=document.getElementById(id);if(e)e.style.width=`${pct}%`;}
+        function minsToHuman(m){if(m==null)return"--";if(m<60)return`${m}m`;return`${Math.floor(m/60)}h ${m%60}m`;}
+        function hourLabel(h){if(h===0)return"12a";if(h<12)return`${h}a`;if(h===12)return"12p";return`${h-12}p`;}
+        function renderCustomerReports(reports) {
+            const list  = document.getElementById("customerReports");
+            const badge = document.getElementById("reportCountBadge");
+            if (!list) return;
+            if (!reports || reports.length === 0) {
+                list.innerHTML = '<div class="log-empty">No customer reports submitted yet.</div>';
+                if (badge) badge.textContent = "0 reports";
+                return;
+            }
+            if (badge) badge.textContent = reports.length + " report" + (reports.length !== 1 ? "s" : "");
+            list.innerHTML = reports.slice().reverse().map(r => {
+                const t = formatTimeParts(r.submitted_at);
+                const statusColor = r.reported_status === "NOT BUSY" ? "rgb(14,183,70)"
+                                  : r.reported_status === "MODERATE"  ? "rgb(255,170,0)"
+                                  : "rgb(220,53,69)";
+                return '<div class="log-item">'
+                    + '<span style="color:' + statusColor + ';font-weight:bold">' + r.reported_status + '</span>'
+                    + '<span style="color:rgba(255,255,255,0.6);font-size:0.85rem">' + (r.comment || "") + '</span>'
+                    + '<span class="log-time">' + t.hour + ':' + t.mins + ':' + t.secs + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+        startAdminDashboard();
+    </script>
+</body>
+</html>
