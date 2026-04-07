@@ -7,39 +7,38 @@
     <link rel="stylesheet" href="/css/trackinfo.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back">
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back">
     <script src="/js/live.js" defer></script>
 
     <style>
-        /* ── Report Section ── */
+        /* ── Shared card style ── */
         .report-section {
             width: 100%;
             max-width: 1100px;
-            border: 2px solid rgb(200, 30, 40);
+            border: 2px solid white;
             border-radius: 20px;
             padding: 28px 24px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 16px;
         }
 
         .report-title {
             font-family: Orbitron, sans-serif;
-            font-size: 1.3rem;
+            font-size: 1.15rem;
             font-weight: bold;
-            color: rgb(255, 100, 100);
-            border-bottom: 1px solid rgb(200, 30, 40);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
             padding-bottom: 10px;
         }
 
         .report-subtitle {
-            font-size: 0.95rem;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: -6px;
         }
 
+        /* ── Queue status buttons ── */
         .report-buttons {
             display: flex;
             gap: 12px;
@@ -49,91 +48,99 @@
         .report-btn {
             padding: 10px 20px;
             border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255,255,255,0.2);
             background: transparent;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255,255,255,0.55);
             font-family: Orbitron, sans-serif;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 44px;
+            white-space: nowrap;
+        }
+        .report-btn:hover { border-color: white; color: white; }
+        .report-btn.selected-empty    { background: rgb(14,183,70);  border-color: rgb(14,183,70);  color: white; }
+        .report-btn.selected-moderate { background: rgb(255,170,0);  border-color: rgb(255,170,0);  color: black; }
+        .report-btn.selected-busy     { background: rgb(220,53,69);  border-color: rgb(220,53,69);  color: white; }
+
+        /* ── Issue type buttons ── */
+        .issue-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .issue-btn {
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
             font-size: 0.82rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            min-height: 42px;
+            min-height: 40px;
+            white-space: nowrap;
         }
+        .issue-btn:hover { border-color: white; color: white; }
+        .issue-btn.selected { background: rgba(255,255,255,0.1); border-color: white; color: white; }
 
-        .report-btn:hover {
-            border-color: white;
-            color: white;
-        }
-
-        .report-btn.selected-empty    { background: rgb(14, 183, 70);  border-color: rgb(14, 183, 70);  color: white; }
-        .report-btn.selected-moderate { background: rgb(255, 170, 0);  border-color: rgb(255, 170, 0);  color: black; }
-        .report-btn.selected-busy     { background: rgb(220, 53, 69);  border-color: rgb(220, 53, 69);  color: white; }
-
+        /* ── Comment textarea ── */
         .report-comment {
             width: 100%;
             padding: 12px 16px;
             border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.04);
             color: white;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             font-family: sans-serif;
             resize: vertical;
             min-height: 80px;
             outline: none;
-            transition: border-color 0.2s ease;
+            transition: border-color 0.2s;
         }
+        .report-comment:focus { border-color: rgb(14,183,70); }
+        .report-comment::placeholder { color: rgba(255,255,255,0.2); }
 
-        .report-comment:focus {
-            border-color: rgb(200, 30, 40);
-        }
-
-        .report-comment::placeholder {
-            color: rgba(255, 255, 255, 0.25);
-        }
-
+        /* ── Submit button ── */
         .report-submit {
             align-self: flex-start;
             padding: 11px 28px;
             border-radius: 10px;
             border: none;
-            background: rgb(14, 183, 70);
+            background: rgb(14,183,70);
             color: white;
             font-family: Orbitron, sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             cursor: pointer;
-            transition: background 0.2s ease;
+            transition: background 0.2s;
             min-height: 44px;
         }
+        .report-submit:hover    { background: rgb(10,150,55); }
+        .report-submit:active   { transform: scale(0.98); }
+        .report-submit:disabled { background: rgba(14,183,70,0.35); cursor: not-allowed; }
 
-        .report-submit:hover  { background: rgb(10, 150, 55); }
-        .report-submit:active { transform: scale(0.98); }
-        .report-submit:disabled { background: rgba(14, 183, 70, 0.35); cursor: not-allowed; }
-
+        /* ── Feedback ── */
         .report-feedback {
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             padding: 10px 14px;
             border-radius: 8px;
             display: none;
         }
+        .report-feedback.success { display:block; background:rgba(14,183,70,0.1); border:1px solid rgb(14,183,70); color:rgb(14,183,70); }
+        .report-feedback.error   { display:block; background:rgba(220,53,69,0.1); border:1px solid rgb(220,53,69); color:rgb(220,53,69); }
 
-        .report-feedback.success {
-            display: block;
-            background: rgba(14, 183, 70, 0.15);
-            border: 1px solid rgb(14, 183, 70);
-            color: rgb(14, 183, 70);
-        }
-
-        .report-feedback.error {
-            display: block;
-            background: rgba(220, 53, 69, 0.15);
-            border: 1px solid rgb(220, 53, 69);
-            color: rgb(220, 53, 69);
+        /* ── Divider between two sections ── */
+        .section-divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin: 4px 0;
         }
 
         @media (max-width: 768px) {
             .report-section { max-width: 420px; }
-            .report-buttons { gap: 8px; }
-            .report-btn { font-size: 0.75rem; padding: 9px 14px; }
+            .report-btn, .issue-btn { font-size: 0.73rem; padding: 8px 12px; }
             .report-submit { width: 100%; }
         }
     </style>
@@ -146,9 +153,7 @@
                 <span id="back">Back</span>
             </a>
         </div>
-        <div class="store-name">
-            Tim Hortons — Queue Status
-        </div>
+        <div class="store-name">Tim Hortons — Queue Status</div>
         <div class="live-refresh">
             <span class="online-status">Live</span> Auto refresh every 1.5s
         </div>
@@ -162,7 +167,7 @@
                     <span class="number-of-people">0</span> people
                 </div>
                 <div class="status-row">
-                    <span class="status">UNKNOWN</span>
+                    <span class="status unknown">UNKNOWN</span>
                 </div>
             </div>
             <div class="esttime">
@@ -176,7 +181,7 @@
             </div>
         </div>
 
-        <!-- Footer Cards -->
+        <!-- Footer cards -->
         <div class="footer">
             <div class="busiest-time">
                 <div class="foottitle">Busiest Time</div>
@@ -191,90 +196,168 @@
             </div>
         </div>
 
-        <!-- Customer Report Section -->
+        <!-- ═══════════════════════════════════════
+             SECTION 1 — Report Queue Status
+             ═══════════════════════════════════════ -->
         <div class="report-section">
-            <div class="report-title">📝 Report Issue</div>
-            <div class="report-subtitle">How does the queue actually look right now? Help others by sharing what you see.</div>
+            <div class="report-title">📝 Report Queue Status</div>
+            <div class="report-subtitle">How does the queue actually look right now?</div>
 
             <div class="report-buttons">
-                <button class="report-btn" data-status="NOT BUSY" onclick="selectReport(this, 'selected-empty')">🟢 Looks Empty</button>
-                <button class="report-btn" data-status="MODERATE" onclick="selectReport(this, 'selected-moderate')">🟡 Looks Moderate</button>
-                <button class="report-btn" data-status="BUSY"     onclick="selectReport(this, 'selected-busy')">🔴 Looks Busy</button>
+                <button class="report-btn" data-status="NOT BUSY" onclick="selectQueueBtn(this,'selected-empty')">🟢 Looks Empty</button>
+                <button class="report-btn" data-status="MODERATE" onclick="selectQueueBtn(this,'selected-moderate')">🟡 Looks Moderate</button>
+                <button class="report-btn" data-status="BUSY"     onclick="selectQueueBtn(this,'selected-busy')">🔴 Looks Busy</button>
             </div>
 
             <textarea
                 class="report-comment"
-                id="reportComment"
+                id="queueComment"
                 placeholder="Optional: add a comment (e.g. 'line is moving fast', 'only 2 cashiers open')..."
                 maxlength="200"></textarea>
 
-            <button class="report-submit" id="reportSubmit" onclick="submitReport()">Submit Report</button>
-            <div class="report-feedback" id="reportFeedback"></div>
+            <button class="report-submit" id="queueSubmit" onclick="submitQueueReport()">Submit Report</button>
+            <div class="report-feedback" id="queueFeedback"></div>
         </div>
+
+        <!-- ═══════════════════════════════════════
+             SECTION 2 — Report a Problem
+             ═══════════════════════════════════════ -->
+        <div class="report-section">
+            <div class="report-title">⚠️ Report a Problem</div>
+            <div class="report-subtitle">Something wrong with the system? Let us know.</div>
+
+            <div class="issue-buttons">
+                <button class="issue-btn" data-issue="Sensor appears offline" onclick="selectIssueBtn(this)">📡 Sensor Offline</button>
+                <button class="issue-btn" data-issue="People count seems wrong" onclick="selectIssueBtn(this)">🔢 Wrong Count</button>
+                <button class="issue-btn" data-issue="Website not updating" onclick="selectIssueBtn(this)">🔄 Not Updating</button>
+                <button class="issue-btn" data-issue="Camera angle issue" onclick="selectIssueBtn(this)">📷 Camera Issue</button>
+                <button class="issue-btn" data-issue="Other technical issue" onclick="selectIssueBtn(this)">🛠 Other Issue</button>
+            </div>
+
+            <textarea
+                class="report-comment"
+                id="issueComment"
+                placeholder="Describe the problem in more detail (optional)..."
+                maxlength="200"></textarea>
+
+            <button class="report-submit" id="issueSubmit" onclick="submitIssueReport()">Submit Problem Report</button>
+            <div class="report-feedback" id="issueFeedback"></div>
+        </div>
+
     </main>
 
     <script src="/js/live.js"></script>
     <script>
         startLiveUpdates();
 
-        let selectedStatus = null;
+        // ── Queue status report ──────────────────────────
+        let selectedQueueStatus = null;
 
-        function selectReport(btn, cls) {
-            // Deselect all
-            document.querySelectorAll('.report-btn').forEach(b => {
-                b.classList.remove('selected-empty', 'selected-moderate', 'selected-busy');
-            });
-            // Select clicked
+        function selectQueueBtn(btn, cls) {
+            document.querySelectorAll('.report-btn').forEach(b =>
+                b.classList.remove('selected-empty','selected-moderate','selected-busy'));
             btn.classList.add(cls);
-            selectedStatus = btn.dataset.status;
-
-            // Hide any previous feedback
-            document.getElementById('reportFeedback').className = 'report-feedback';
+            selectedQueueStatus = btn.dataset.status;
+            document.getElementById('queueFeedback').className = 'report-feedback';
         }
 
-        async function submitReport() {
-            const feedback = document.getElementById('reportFeedback');
-            const comment  = document.getElementById('reportComment').value.trim();
-            const btn      = document.getElementById('reportSubmit');
+        async function submitQueueReport() {
+            const feedback = document.getElementById('queueFeedback');
+            const comment  = document.getElementById('queueComment').value.trim();
+            const btn      = document.getElementById('queueSubmit');
 
-            if (!selectedStatus) {
+            if (!selectedQueueStatus) {
                 feedback.textContent = 'Please select how the queue looks before submitting.';
                 feedback.className   = 'report-feedback error';
                 return;
             }
 
-            btn.disabled     = true;
-            btn.textContent  = 'Submitting...';
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
 
             try {
                 const res = await fetch('/report', {
-                    method:  'POST',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({
-                        store:            'timhortons',
-                        reported_status:  selectedStatus,
-                        comment:          comment
+                    body: JSON.stringify({
+                        store:           'timhortons',
+                        reported_status: selectedQueueStatus,
+                        comment:         comment,
+                        type:            'queue_status'
                     })
                 });
 
                 if (res.ok) {
-                    feedback.textContent = '✅ Thank you! Your report has been submitted.';
+                    feedback.textContent = '✅ Thank you! Your queue report has been submitted.';
                     feedback.className   = 'report-feedback success';
-                    // Reset form
-                    selectedStatus = null;
+                    selectedQueueStatus  = null;
                     document.querySelectorAll('.report-btn').forEach(b =>
-                        b.classList.remove('selected-empty', 'selected-moderate', 'selected-busy'));
-                    document.getElementById('reportComment').value = '';
+                        b.classList.remove('selected-empty','selected-moderate','selected-busy'));
+                    document.getElementById('queueComment').value = '';
                 } else {
-                    throw new Error('Server error');
+                    throw new Error();
                 }
             } catch (e) {
-                feedback.textContent = '❌ Could not submit report. Please try again.';
+                feedback.textContent = '❌ Could not submit. Please try again.';
                 feedback.className   = 'report-feedback error';
             }
 
             btn.disabled    = false;
             btn.textContent = 'Submit Report';
+        }
+
+        // ── Problem / issue report ───────────────────────
+        let selectedIssue = null;
+
+        function selectIssueBtn(btn) {
+            document.querySelectorAll('.issue-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedIssue = btn.dataset.issue;
+            document.getElementById('issueFeedback').className = 'report-feedback';
+        }
+
+        async function submitIssueReport() {
+            const feedback = document.getElementById('issueFeedback');
+            const comment  = document.getElementById('issueComment').value.trim();
+            const btn      = document.getElementById('issueSubmit');
+
+            if (!selectedIssue) {
+                feedback.textContent = 'Please select the type of problem before submitting.';
+                feedback.className   = 'report-feedback error';
+                return;
+            }
+
+            btn.disabled    = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const res = await fetch('/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store:           'timhortons',
+                        reported_status: 'ISSUE',
+                        comment:         selectedIssue + (comment ? ': ' + comment : ''),
+                        type:            'problem_report'
+                    })
+                });
+
+                if (res.ok) {
+                    feedback.textContent = '✅ Problem reported! Our team will look into it.';
+                    feedback.className   = 'report-feedback success';
+                    selectedIssue        = null;
+                    document.querySelectorAll('.issue-btn').forEach(b => b.classList.remove('selected'));
+                    document.getElementById('issueComment').value = '';
+                } else {
+                    throw new Error();
+                }
+            } catch (e) {
+                feedback.textContent = '❌ Could not submit. Please try again.';
+                feedback.className   = 'report-feedback error';
+            }
+
+            btn.disabled    = false;
+            btn.textContent = 'Submit Problem Report';
         }
     </script>
 </body>
