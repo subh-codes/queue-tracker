@@ -225,14 +225,19 @@
         try {
             const res = await fetch("/tickets");
             if (!res.ok) throw new Error();
-            allTickets = (await res.json()).slice().reverse();
-            // Ensure fields exist for old tickets
-            allTickets = allTickets.map(t => ({
-                ticket_status: "open",
-                priority:      t.reported_status === "BUSY" ? "high" : t.reported_status === "MODERATE" ? "medium" : "low",
-                admin_note:    "",
-                ...t
-            }));
+            const raw = await res.json();
+            // Newest first, fill missing fields for old tickets
+            allTickets = raw.slice().reverse().map(t => {
+                const rs = (t.reported_status || "").toUpperCase();
+                return {
+                    ticket_status: t.ticket_status || "open",
+                    priority:      t.priority || (rs === "BUSY" ? "high" : rs === "MODERATE" ? "medium" : "low"),
+                    admin_note:    t.admin_note || "",
+                    type:          t.type || "queue_status",
+                    updated_at:    t.updated_at || null,
+                    ...t
+                };
+            });
             updateStats();
             updateBadges();
             renderTickets();
