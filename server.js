@@ -360,6 +360,50 @@ app.post("/report", (req, res) => {
   res.json({ success: true, ticket_id: ticket.id });
 });
 
+
+
+/* ════════════════════════════════════════════════
+   GET ALL TICKETS FROM BLOB
+   GET /tickets
+   ════════════════════════════════════════════════ */
+
+app.get("/tickets", async (req, res) => {
+  try {
+    if (!ticketsBlobClient) return res.json([]);
+    const exists = await ticketsBlobClient.exists();
+    if (!exists) return res.json([]);
+    const download = await ticketsBlobClient.download(0);
+    const chunks = [];
+    for await (const chunk of download.readableStreamBody) chunks.push(chunk);
+    const tickets = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    res.json(tickets);
+  } catch (e) {
+    console.error("[TICKETS] Fetch failed:", e.message);
+    res.json([]);
+  }
+});
+
+/* ════════════════════════════════════════════════
+   CLEAR ALL TICKETS
+   POST /clear-tickets
+   ════════════════════════════════════════════════ */
+
+app.post("/clear-tickets", async (req, res) => {
+  try {
+    reportsBuffer = [];
+    ticketCounter = 0;
+    if (ticketsBlobClient) {
+      const text = JSON.stringify([]);
+      await ticketsBlobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
+    }
+    console.log("[TICKETS] All tickets cleared.");
+    res.json({ success: true });
+  } catch (e) {
+    console.error("[TICKETS] Clear failed:", e.message);
+    res.status(500).json({ error: "Clear failed" });
+  }
+});
+
 /* ════════════════════════════════════════════════
    START
    ════════════════════════════════════════════════ */
