@@ -336,7 +336,7 @@ app.post("/report", (req, res) => {
   const { store, reported_status, comment } = req.body;
   const storeName = (store || "timhortons").toLowerCase();
 
-  const validStatuses = ["NOT BUSY", "MODERATE", "BUSY"];
+  const validStatuses = ["NOT BUSY", "MODERATE", "BUSY", "ISSUE"];
   if (!validStatuses.includes((reported_status || "").toUpperCase())) {
     return res.status(400).json({ error: "Invalid status" });
   }
