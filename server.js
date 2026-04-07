@@ -343,12 +343,19 @@ app.post("/report", (req, res) => {
 
   pruneReports();
 
+  const rawStatus = (reported_status || "").toUpperCase();
+  const priority = rawStatus === "BUSY" ? "high" : rawStatus === "MODERATE" ? "medium" : "low";
+
   const ticket = {
     id:              String(++ticketCounter).padStart(7, "0"),
     store:           storeName,
-    reported_status: (reported_status || "").toUpperCase(),
+    reported_status: rawStatus,
     comment:         (comment || "").slice(0, 200).trim(),
-    submitted_at:    new Date().toISOString()
+    submitted_at:    new Date().toISOString(),
+    ticket_status:   "open",
+    priority:        priority,
+    admin_note:      "",
+    updated_at:      null
   };
 
   reportsBuffer.push(ticket);
@@ -434,4 +441,53 @@ initBlob().then(async () => {
   app.listen(PORT, () => {
     console.log(`Queue Tracker Server running on port ${PORT}`);
   });
+});
+
+/* ════════════════════════════════════════════════
+   UPDATE TICKET STATUS / NOTE
+   PATCH /tickets/:id
+   Body: { ticket_status, note }
+   ════════════════════════════════════════════════ */
+
+app.patch("/tickets/:id", async (req, res) => {
+  const { id } = req.params;
+  const { ticket_status, note } = req.body;
+  const validStatuses = ["open", "in_progress", "resolved"];
+
+  if (ticket_status && !validStatuses.includes(ticket_status)) {
+    return res.status(400).json({ error: "Invalid ticket_status" });
+  }
+
+  try {
+    if (!ticketsBlobClient) return res.status(503).json({ error: "Storage not available" });
+    const exists = await ticketsBlobClient.exists();
+    if (!exists) return res.status(404).json({ error: "No tickets found" });
+
+    const download = await ticketsBlobClient.download(0);
+    const chunks = [];
+    for await (const chunk of download.readableStreamBody) chunks.push(chunk);
+    const tickets = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+
+    const idx = tickets.findIndex(t => String(t.id) === String(id));
+    if (idx === -1) return res.status(404).json({ error: "Ticket not found" });
+
+    if (ticket_status) tickets[idx].ticket_status = ticket_status;
+    if (note !== undefined) tickets[idx].admin_note = note;
+    tickets[idx].updated_at = new Date().toISOString();
+
+    // Sync reportsBuffer too
+    const ri = reportsBuffer.findIndex(t => String(t.id) === String(id));
+    if (ri !== -1) {
+      if (ticket_status) reportsBuffer[ri].ticket_status = ticket_status;
+      if (note !== undefined) reportsBuffer[ri].admin_note = note;
+    }
+
+    const text = JSON.stringify(tickets, null, 2);
+    await ticketsBlobClient.upload(text, Buffer.byteLength(text), { overwrite: true });
+    console.log(`[TICKETS] Updated ticket #${id} → ${ticket_status || "note only"}`);
+    res.json({ success: true, ticket: tickets[idx] });
+  } catch (e) {
+    console.error("[TICKETS] Update failed:", e.message);
+    res.status(500).json({ error: "Update failed" });
+  }
 });
