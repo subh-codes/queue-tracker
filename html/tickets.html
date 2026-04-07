@@ -224,29 +224,35 @@
     async function loadTickets() {
         try {
             const res = await fetch("/tickets");
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error("HTTP " + res.status);
             const raw = await res.json();
             // Newest first, fill missing fields for old tickets
             allTickets = raw.slice().reverse().map(t => {
                 const rs = (t.reported_status || "").toUpperCase();
-                return {
-                    ticket_status: t.ticket_status || "open",
-                    priority:      t.priority || (rs === "BUSY" ? "high" : rs === "MODERATE" ? "medium" : "low"),
-                    admin_note:    t.admin_note || "",
-                    type:          t.type || "queue_status",
-                    updated_at:    t.updated_at || null,
-                    ...t
-                };
+                return Object.assign({
+                    ticket_status: "open",
+                    priority:      rs === "BUSY" ? "high" : rs === "MODERATE" ? "medium" : "low",
+                    admin_note:    "",
+                    type:          "queue_status",
+                    updated_at:    null
+                }, t);
             });
             updateStats();
             updateBadges();
-            renderTickets();
+            try {
+                renderTickets();
+            } catch(renderErr) {
+                console.error("Render error:", renderErr);
+                document.getElementById("ticketList").innerHTML =
+                    '<div class="empty-state">Display error: ' + renderErr.message + '</div>';
+            }
             const now = new Date();
             document.getElementById("refreshInfo").textContent =
                 "Last refreshed: " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
         } catch (e) {
+            console.error("Load error:", e);
             document.getElementById("ticketList").innerHTML =
-                '<div class="empty-state">Could not load tickets. Push the updated server.js to GitHub first.</div>';
+                '<div class="empty-state">Could not load tickets from Azure (' + e.message + ')</div>';
         }
     }
 
@@ -316,17 +322,17 @@
     }
 
     function buildCard(t) {
-        const sc = scClass || "issue";
+        const sc = scClass;
         const prio = t.priority || "low";
         const ts   = t.ticket_status || "open";
 
         const statusLabel = ts === "in_progress" ? "In Progress" : ts.charAt(0).toUpperCase() + ts.slice(1);
+        const scClass = t.reported_status === "NOT BUSY" ? "not-busy"
+                      : t.reported_status === "MODERATE"  ? "moderate"
+                      : t.reported_status === "BUSY"       ? "busy" : "issue";
         const typeBadge = t.type === "problem_report"
             ? '<span class="badge type-issue">⚠ PROBLEM REPORT</span>'
             : '<span class="badge type-queue">QUEUE REPORT</span>';
-        const scClass = t.reported_status === "NOT BUSY" ? "not-busy"
-                      : t.reported_status === "MODERATE"  ? "moderate"
-                      : t.reported_status === "BUSY"      ? "busy" : "issue";
 
         const actions = ts === "open"
             ? `<button class="action-btn in-progress" onclick="updateStatus('${t.id}','in_progress')">▶ In Progress</button>
