@@ -72,6 +72,9 @@
         .badge.open        { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); }
         .badge.in_progress { background: rgba(100,149,237,0.15); color: rgb(100,149,237); }
         .badge.resolved    { background: rgba(14,183,70,0.15);   color: rgb(14,183,70); }
+        .badge.issue       { background: rgba(255,140,0,0.15);    color: rgb(255,140,0); }
+        .badge.type-issue  { background: rgba(255,80,80,0.12);    color: rgb(255,120,120); font-size:0.62rem; }
+        .badge.type-queue  { background: rgba(255,255,255,0.06);  color: rgba(255,255,255,0.4); font-size:0.62rem; }
 
         .ticket-comment { font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.5; }
         .ticket-comment.empty { color: rgba(255,255,255,0.25); font-style: italic; }
@@ -308,12 +311,17 @@
     }
 
     function buildCard(t) {
-        const sc  = (t.reported_status || "").toLowerCase().replace(" ", "-") === "not-busy" ? "not-busy"
-                  : (t.reported_status || "") === "MODERATE" ? "moderate" : "busy";
+        const sc = scClass || "issue";
         const prio = t.priority || "low";
         const ts   = t.ticket_status || "open";
 
         const statusLabel = ts === "in_progress" ? "In Progress" : ts.charAt(0).toUpperCase() + ts.slice(1);
+        const typeBadge = t.type === "problem_report"
+            ? '<span class="badge type-issue">⚠ PROBLEM REPORT</span>'
+            : '<span class="badge type-queue">QUEUE REPORT</span>';
+        const scClass = t.reported_status === "NOT BUSY" ? "not-busy"
+                      : t.reported_status === "MODERATE"  ? "moderate"
+                      : t.reported_status === "BUSY"      ? "busy" : "issue";
 
         const actions = ts === "open"
             ? `<button class="action-btn in-progress" onclick="updateStatus('${t.id}','in_progress')">▶ In Progress</button>
@@ -333,6 +341,7 @@
                     <span class="badge ${sc}">${t.reported_status}</span>
                     <span class="badge ${prio}">${prio.toUpperCase()} PRIORITY</span>
                     <span class="badge ${ts}">${statusLabel}</span>
+                    ${typeBadge}
                 </div>
                 <span class="ticket-time">${formatTime(t.submitted_at)}${updatedStr}</span>
             </div>
