@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tickets — Queue Monitoring System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: sans-serif;
+            background-color: #05060A;
+            color: white;
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        header {
+            min-height: 60px;
+            border-bottom: 1px solid white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 4px 14px;
+            flex-wrap: wrap;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: rgba(255,255,255,0.5);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
+        .header-title {
+            font-family: Orbitron, sans-serif;
+            font-size: clamp(1.1rem, 4vw, 1.6rem);
+            font-weight: bold;
+        }
+
+        .header-badge {
+            font-size: 0.7rem;
+            font-family: Orbitron, sans-serif;
+            background: rgb(14, 183, 70);
+            color: #05060A;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            margin-top: 32px;
+            padding-bottom: 48px;
+        }
+
+        .section-label {
+            font-size: 0.78rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.35);
+            font-family: Orbitron, sans-serif;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* ── Stat cards ── */
+        .stats-row {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 22px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+            min-height: 110px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.45);
+            font-family: Orbitron, sans-serif;
+        }
+
+        .stat-value {
+            font-family: Orbitron, sans-serif;
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            line-height: 1;
+        }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-btn-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .filter-btn:hover { border-color: white; color: white; }
+        .filter-btn.active { background: white; color: #05060A; border-color: white; }
+        .filter-btn.not-busy.active  { background: rgb(14,183,70);  border-color: rgb(14,183,70);  color: white; }
+        .filter-btn.moderate.active  { background: rgb(255,170,0);  border-color: rgb(255,170,0);  color: black; }
+        .filter-btn.busy.active      { background: rgb(220,53,69);  border-color: rgb(220,53,69);  color: white; }
+
+        .search-input {
+            width: 100%;
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: rgb(14,183,70); }
+        .search-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        /* ── Ticket table ── */
+        .ticket-table-wrap {
+            width: 100%;
+            max-width: 1100px;
+            border: 2px solid white;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .ticket-table-header {
+            display: grid;
+            grid-template-columns: 110px 130px 1fr 180px 100px;
+            background: rgba(255,255,255,0.07);
+            padding: 14px 18px;
+            font-family: Orbitron, sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.45);
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            max-height: 520px;
+            overflow-y: auto;
+        }
+
+        .ticket-row {
+            display: grid;
+            grid-template-columns: 110px 130px 1fr 180px 100px;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: background 0.15s;
+        }
+        .ticket-row:hover { background: rgba(14,183,70,0.05); }
+        .ticket-row:last-child { border-bottom: none; }
+
+        .ticket-id {
+            font-family: Orbitron, sans-serif;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .ticket-status {
+            font-family: Orbitron, sans-serif;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        .ticket-status.not-busy { background: rgba(14,183,70,0.15);  color: rgb(14,183,70); }
+        .ticket-status.moderate  { background: rgba(255,170,0,0.15);  color: rgb(255,170,0); }
+        .ticket-status.busy      { background: rgba(220,53,69,0.15);  color: rgb(220,53,69); }
+
+        .ticket-comment {
+            color: rgba(255,255,255,0.75);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .ticket-comment.empty { color: rgba(255,255,255,0.2); font-style: italic; }
+
+        .ticket-time {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .ticket-action button {
+            padding: 5px 14px;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ticket-action button:hover {
+            border-color: rgb(14,183,70);
+            color: rgb(14,183,70);
+        }
+
+        .ticket-empty {
+            padding: 52px 18px;
+            text-align: center;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.95rem;
+        }
+
+        /* ── Action bar ── */
+        .action-bar {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .refresh-text {
+            flex: 1;
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .action-btn {
+            padding: 10px 22px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            font-family: Orbitron, sans-serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { border-color: white; color: white; }
+        .action-btn.danger:hover { border-color: rgb(220,53,69); color: rgb(220,53,69); }
+        .action-btn.primary {
+            background: rgb(14,183,70);
+            border-color: rgb(14,183,70);
+            color: white;
+        }
+        .action-btn.primary:hover { background: rgb(10,150,55); }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.visible { display: flex; }
+
+        .modal {
+            background: #05060A;
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 32px 28px;
+            max-width: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-title {
+            font-family: Orbitron, sans-serif;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 12px;
+        }
+
+        .modal-body {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.8;
+        }
+        .modal-body strong { color: white; }
+
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+
+        /* Scrollbar */
+        .ticket-list::-webkit-scrollbar { width: 4px; }
+        .ticket-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+        .ticket-list::-webkit-scrollbar-thumb { background: rgba(14,183,70,0.4); border-radius: 4px; }
+
+        @media (max-width: 768px) {
+            .ticket-table-header,
+            .ticket-row { grid-template-columns: 90px 110px 1fr 140px; }
+            .ticket-table-header span:last-child,
+            .ticket-action { display: none; }
+            .stats-row { max-width: 420px; }
+            .filter-bar, .action-bar, .ticket-table-wrap, .section-label { max-width: 420px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="admin_standalone.html" class="back-link">&#8592; Back to Dashboard</a>
+    <div class="header-title">Ticket Management</div>
+    <span class="header-badge">ADMIN</span>
+</header>
+
+<main>
+
+    <div class="section-label">Overview</div>
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Total Tickets</div>
+            <div class="stat-value" id="statTotal">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Not Busy Reports</div>
+            <div class="stat-value" id="statNotBusy" style="color:rgb(14,183,70)">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Moderate Reports</div>
+            <div class="stat-value" id="statModerate" style="color:rgb(255,170,0)">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Busy Reports</div>
+            <div class="stat-value" id="statBusy" style="color:rgb(220,53,69)">--</div>
+        </div>
+    </div>
+
+    <div class="section-label">Filter</div>
+    <div class="filter-bar">
+        <div class="filter-btn-row">
+            <button class="filter-btn active"   data-filter="ALL"      onclick="setFilter('ALL',this)">All</button>
+            <button class="filter-btn not-busy" data-filter="NOT BUSY" onclick="setFilter('NOT BUSY',this)">🟢 Not Busy</button>
+            <button class="filter-btn moderate" data-filter="MODERATE" onclick="setFilter('MODERATE',this)">🟡 Moderate</button>
+            <button class="filter-btn busy"     data-filter="BUSY"     onclick="setFilter('BUSY',this)">🔴 Busy</button>
+        </div>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search comments..." oninput="renderTickets()">
+    </div>
+
+    <div class="section-label" id="ticketCountLabel">All Tickets</div>
+    <div class="ticket-table-wrap">
+        <div class="ticket-table-header">
+            <span>Ticket ID</span>
+            <span>Status</span>
+            <span>Comment</span>
+            <span>Submitted</span>
+            <span>Action</span>
+        </div>
+        <div class="ticket-list" id="ticketList">
+            <div class="ticket-empty">Loading tickets from Azure...</div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <span class="refresh-text" id="lastRefresh">Auto-refreshes every 10s</span>
+        <button class="action-btn" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="action-btn danger" onclick="showClearModal()">🗑 Clear All</button>
+    </div>
+
+</main>
+
+<!-- Clear modal -->
+<div class="modal-overlay" id="clearModal">
+    <div class="modal">
+        <div class="modal-title">Clear All Tickets?</div>
+        <div class="modal-body">
+            This will permanently delete <strong id="clearCount">all</strong> tickets from memory and Azure Blob Storage.<br><br>
+            This action <strong>cannot be undone.</strong>
+        </div>
+        <div class="modal-actions">
+            <button class="action-btn" onclick="hideClearModal()">Cancel</button>
+            <button class="action-btn primary" onclick="clearAllTickets()">Yes, Delete All</button>
+        </div>
+    </div>
+</div>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal">
+        <div class="modal-title">Ticket Detail</div>
+        <div class="modal-body" id="detailBody"></div>
+        <div class="modal-actions">
+            <button class="action-btn primary" onclick="hideDetailModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let allTickets   = [];
+    let activeFilter = "ALL";
+
+    /* ── Load tickets directly from /tickets endpoint ── */
+    async function loadTickets() {
+        try {
+            const res  = await fetch("/tickets");
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            // Newest first
+            allTickets = data.slice().reverse();
+            updateStats();
+            renderTickets();
+            const now = new Date();
+            document.getElementById("lastRefresh").textContent =
+                "Last refreshed: " +
+                String(now.getHours()).padStart(2,"0") + ":" +
+                String(now.getMinutes()).padStart(2,"0") + ":" +
+                String(now.getSeconds()).padStart(2,"0");
+        } catch (e) {
+            document.getElementById("ticketList").innerHTML =
+                '<div class="ticket-empty">Could not load tickets from Azure. Check that the server is running.</div>';
+        }
+    }
+
+    /* ── Stats ── */
+    function updateStats() {
+        document.getElementById("statTotal").textContent    = allTickets.length;
+        document.getElementById("statNotBusy").textContent  = allTickets.filter(t => t.reported_status === "NOT BUSY").length;
+        document.getElementById("statModerate").textContent = allTickets.filter(t => t.reported_status === "MODERATE").length;
+        document.getElementById("statBusy").textContent     = allTickets.filter(t => t.reported_status === "BUSY").length;
+    }
+
+    /* ── Filter ── */
+    function setFilter(filter, btn) {
+        activeFilter = filter;
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTickets();
+    }
+
+    /* ── Render table ── */
+    function renderTickets() {
+        const search = (document.getElementById("searchInput").value || "").toLowerCase();
+        const list   = document.getElementById("ticketList");
+        const label  = document.getElementById("ticketCountLabel");
+
+        let filtered = allTickets;
+        if (activeFilter !== "ALL") {
+            filtered = filtered.filter(t => t.reported_status === activeFilter);
+        }
+        if (search) {
+            filtered = filtered.filter(t => (t.comment || "").toLowerCase().includes(search));
+        }
+
+        label.textContent = "Showing " + filtered.length + " of " + allTickets.length +
+            " ticket" + (allTickets.length !== 1 ? "s" : "");
+
+        if (!filtered.length) {
+            list.innerHTML = '<div class="ticket-empty">No tickets match your filter.</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map((t, i) => {
+            const sc      = t.reported_status === "NOT BUSY" ? "not-busy"
+                          : t.reported_status === "MODERATE"  ? "moderate" : "busy";
+            const comment = t.comment || "";
+            const idLabel = t.id || "---";
+            return '<div class="ticket-row">' +
+                '<span class="ticket-id">#' + idLabel + '</span>' +
+                '<span class="ticket-status ' + sc + '">' + t.reported_status + '</span>' +
+                '<span class="ticket-comment' + (!comment ? ' empty' : '') + '">' + (comment || 'No comment') + '</span>' +
+                '<span class="ticket-time">' + formatTime(t.submitted_at) + '</span>' +
+                '<span class="ticket-action"><button onclick="showDetail(' + i + ')">View</button></span>' +
+                '</div>';
+        }).join("");
+    }
+
+    /* ── Detail modal ── */
+    function showDetail(idx) {
+        const t = allTickets[idx];
+        const statusColor = t.reported_status === "NOT BUSY" ? "rgb(14,183,70)"
+                          : t.reported_status === "MODERATE"  ? "rgb(255,170,0)"
+                          : "rgb(220,53,69)";
+        document.getElementById("detailBody").innerHTML =
+            "<strong>Ticket ID:</strong> #" + (t.id || "N/A") + "<br><br>" +
+            "<strong>Store:</strong> " + (t.store || "timhortons") + "<br><br>" +
+            "<strong>Reported Status:</strong> <span style='color:" + statusColor + ";font-weight:bold'>" + t.reported_status + "</span><br><br>" +
+            "<strong>Comment:</strong> " + (t.comment || "<em style='color:rgba(255,255,255,0.3)'>No comment provided</em>") + "<br><br>" +
+            "<strong>Submitted At:</strong> " + formatTime(t.submitted_at);
+        document.getElementById("detailModal").classList.add("visible");
+    }
+
+    function hideDetailModal() {
+        document.getElementById("detailModal").classList.remove("visible");
+    }
+
+    /* ── Clear all ── */
+    function showClearModal() {
+        document.getElementById("clearCount").textContent =
+            allTickets.length + " ticket" + (allTickets.length !== 1 ? "s" : "");
+        document.getElementById("clearModal").classList.add("visible");
+    }
+
+    function hideClearModal() {
+        document.getElementById("clearModal").classList.remove("visible");
+    }
+
+    async function clearAllTickets() {
+        try {
+            const res = await fetch("/clear-tickets", { method: "POST" });
+            if (res.ok) {
+                allTickets = [];
+                updateStats();
+                renderTickets();
+                hideClearModal();
+            } else {
+                alert("Could not clear tickets. Try again.");
+            }
+        } catch (e) {
+            alert("Error: " + e.message);
+        }
+    }
+
+    /* ── Export CSV ── */
+    function exportCSV() {
+        if (!allTickets.length) { alert("No tickets to export."); return; }
+        const header = "Ticket ID,Store,Reported Status,Comment,Submitted At";
+        const rows   = allTickets.map(t =>
+            '"' + (t.id||"") + '","' + (t.store||"") + '","' +
+            t.reported_status + '","' +
+            (t.comment||"").replace(/"/g,'""') + '","' + t.submitted_at + '"'
+        );
+        const csv  = [header, ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.download = "tickets_" + new Date().toISOString().slice(0,10) + ".csv";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /* ── Format time ── */
+    function formatTime(iso) {
+        if (!iso) return "--";
+        const d = new Date(iso);
+        return d.toLocaleDateString("en-CA") + "  " +
+               String(d.getHours()).padStart(2,"0") + ":" +
+               String(d.getMinutes()).padStart(2,"0") + ":" +
+               String(d.getSeconds()).padStart(2,"0");
+    }
+
+    /* ── Start ── */
+    loadTickets();
+    setInterval(loadTickets, 10000);
+</script>
+</body>
+</html>
