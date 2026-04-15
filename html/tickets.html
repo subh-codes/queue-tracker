@@ -251,7 +251,7 @@
 
         const accounts = msalInstance.getAllAccounts();
         if (accounts.length === 0) {
-            window.location.href = "./admin_login.html";
+            sessionStorage.setItem("qms_return_to", window.location.href); window.location.href = "./admin_login.html";
             return;
         }
 
@@ -558,7 +558,7 @@
     /* ── Boot ── */
     initAuth().catch(err => {
         console.error("Auth error:", err);
-        window.location.href = "./admin_login.html";
+        sessionStorage.setItem("qms_return_to", window.location.href); window.location.href = "./admin_login.html";
     });
 </script>
 </body>
