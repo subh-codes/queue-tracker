@@ -3,449 +3,573 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Queue Monitoring System</title>
+    <title>Dashboard - Queue Monitoring System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=location_on" />
     <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; background-color: #05060A; color: white; min-height: 100vh; padding: 12px; }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:sans-serif; background:#05060A; color:white; min-height:100vh; padding:12px; }
+        body.auth-pending { visibility:hidden; }
 
-        /* hide entire page until auth confirmed */
-        body.auth-pending { visibility: hidden; }
+        header { min-height:60px; border-bottom:1px solid white; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 4px 14px; flex-wrap:wrap; }
+        .header-left { display:flex; align-items:center; gap:8px; }
+        .logo-text { font-size:20px; font-weight:bold; font-family:Orbitron,sans-serif; }
+        .role-badge { font-size:0.7rem; font-family:Orbitron,sans-serif; padding:3px 8px; border-radius:6px; font-weight:bold; letter-spacing:0.05em; }
+        .role-badge.admin  { background:rgb(14,183,70);   color:#05060A; }
+        .role-badge.member { background:rgb(100,149,237); color:#05060A; }
+        .live-refresh { font-size:1rem; }
+        .online-status { color:rgb(14,255,70); font-weight:bold; margin-right:4px; }
+        .user-chip { display:flex; align-items:center; gap:8px; font-size:0.72rem; color:rgba(255,255,255,0.5); font-family:Orbitron,sans-serif; }
+        .user-chip-name { color:rgba(255,255,255,0.8); }
+        .signout-btn { background:none; border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.45); font-family:Orbitron,sans-serif; font-size:0.65rem; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+        .signout-btn:hover { border-color:rgb(220,53,69); color:rgb(220,53,69); }
 
-        header { min-height: 60px; border-bottom: 1px solid white; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 4px 14px; flex-wrap: wrap; }
-        .header-left { display: flex; flex-direction: row; align-items: center; gap: 8px; }
-        .logo-text { font-size: 20px; font-weight: bold; font-family: Orbitron, sans-serif; }
-        .admin-badge { font-size: 0.7rem; font-family: Orbitron, sans-serif; background-color: rgb(14, 183, 70); color: #05060A; padding: 3px 8px; border-radius: 6px; font-weight: bold; letter-spacing: 0.05em; }
-        .live-refresh { font-size: 1rem; }
-        .online-status { color: rgb(14, 255, 70); font-weight: bold; margin-right: 4px; }
-        .user-chip { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; letter-spacing: 0.04em; }
-        .user-chip-name { color: rgba(255,255,255,0.8); }
-        .signout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45); font-family: Orbitron, sans-serif; font-size: 0.65rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em; }
-        .signout-btn:hover { border-color: rgb(220,53,69); color: rgb(220,53,69); }
-        main { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 36px; gap: 24px; }
-        .page-heading { font-size: clamp(1.7rem, 6vw, 2.2rem); font-weight: bold; font-family: Orbitron, sans-serif; text-align: center; }
-        .section-label { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); font-family: Orbitron, sans-serif; width: 100%; max-width: 1100px; }
-        .store-selector { width: 100%; max-width: 1100px; display: flex; gap: 12px; flex-wrap: wrap; }
-        .store-tab { padding: 9px 20px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.3); background: transparent; color: rgba(255,255,255,0.55); font-family: Orbitron, sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; }
-        .store-tab:hover { border-color: white; color: white; }
-        .store-tab.active { background: white; color: #05060A; border-color: white; }
-        .live-row { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-        .live-card { border: 2px solid white; border-radius: 20px; padding: 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; min-height: 120px; }
-        .live-card-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; }
-        .live-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; }
-        .live-card-sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
-        .status { min-width: 130px; min-height: 42px; padding: 8px 18px; border-radius: 14px; display: inline-flex; justify-content: center; align-items: center; background-color: rgb(108,117,125); color: white; white-space: nowrap; font-family: Orbitron, sans-serif; font-size: 1rem; line-height: 1; transition: background-color 0.25s ease, color 0.25s ease; }
-        .status.not-busy { background-color: rgb(14,183,70); color: white; }
-        .status.moderate  { background-color: rgb(255,170,0); color: black; }
-        .status.busy      { background-color: rgb(220,53,69); color: white; }
-        .status.unknown   { background-color: rgb(108,117,125); color: white; }
-        .summary-tabs { width: 100%; max-width: 1100px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .sum-tab { padding: 8px 18px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease; }
-        .sum-tab:hover { border-color: white; color: white; }
-        .sum-tab.active { background: white; color: #05060A; border-color: white; }
-        .analytics-grid { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-        .analytics-card { border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; min-height: 160px; }
-        .analytics-card.full-width { grid-column: 1 / -1; }
-        .analytics-card-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
-        .analytics-card-value { font-family: Orbitron, sans-serif; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1; }
-        .analytics-card-sub { font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-top: auto; }
-        .dist-bar-wrap { width: 100%; height: 16px; border-radius: 8px; overflow: hidden; display: flex; background: rgba(255,255,255,0.08); }
-        .dist-segment { height: 100%; transition: width 0.5s ease; }
-        .dist-segment.not-busy { background-color: rgb(14,183,70); }
-        .dist-segment.moderate  { background-color: rgb(255,170,0); }
-        .dist-segment.busy      { background-color: rgb(220,53,69); }
-        .dist-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; margin-top: 4px; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
-        .legend-dot.not-busy { background-color: rgb(14,183,70); }
-        .legend-dot.moderate  { background-color: rgb(255,170,0); }
-        .legend-dot.busy      { background-color: rgb(220,53,69); }
-        .chart-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 16px; }
-        .chart-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; }
-        .chart-area { width: 100%; overflow-x: auto; }
-        .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; min-width: 500px; padding-bottom: 28px; position: relative; }
-        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
-        .bar { width: 100%; border-radius: 4px 4px 0 0; background-color: rgb(14,183,70); min-height: 2px; transition: height 0.4s ease; }
-        .bar.moderate { background-color: rgb(255,170,0); }
-        .bar.busy     { background-color: rgb(220,53,69); }
-        .bar.no-data  { background-color: rgba(255,255,255,0.1); }
-        .bar-label { font-size: 0.58rem; color: rgba(255,255,255,0.4); position: absolute; bottom: -20px; white-space: nowrap; }
-        .bar-val { font-size: 0.6rem; color: rgba(255,255,255,0.55); position: absolute; top: -16px; }
-        .log-card { width: 100%; max-width: 1100px; border: 2px solid white; border-radius: 20px; padding: 24px 18px; display: flex; flex-direction: column; gap: 14px; }
-        .log-title { font-size: 1.1rem; font-weight: bold; font-family: Orbitron, sans-serif; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .log-count-badge { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 20px; }
-        .log-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); font-size: 0.9rem; gap: 8px; flex-wrap: wrap; }
-        .log-time { color: rgba(255,255,255,0.5); font-size: 0.8rem; white-space: nowrap; }
-        .log-empty { text-align: center; color: rgba(255,255,255,0.3); font-size: 0.9rem; padding: 20px 0; }
-        .weekly-placeholder { width: 100%; max-width: 1100px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 36px 18px; text-align: center; color: rgba(255,255,255,0.3); display: none; flex-direction: column; gap: 10px; align-items: center; }
-        .weekly-placeholder.visible { display: flex; }
-        .weekly-placeholder-title { font-family: Orbitron, sans-serif; font-size: 1rem; }
-        .log-list::-webkit-scrollbar { width: 4px; }
-        .log-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
-        .log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-        @media (max-width: 768px) {
-            body { padding: 14px; }
-            header { flex-direction: column; align-items: flex-start; gap: 8px; }
-            main { margin-top: 28px; }
-            .live-row, .analytics-grid { grid-template-columns: 1fr; max-width: 420px; }
-            .chart-card, .log-card, .summary-tabs, .section-label, .store-selector, .weekly-placeholder { max-width: 420px; }
-        }
-        @media (max-width: 480px) {
-            .page-heading { font-size: 1.45rem; }
-            .live-card-value { font-size: 1.8rem; }
-            .analytics-card-value { font-size: 1.4rem; }
-            .status { min-width: 120px; min-height: 38px; padding: 7px 14px; font-size: 0.9rem; }
+        main { display:flex; flex-direction:column; align-items:center; width:100%; margin-top:36px; gap:24px; }
+        .page-heading { font-size:clamp(1.7rem,6vw,2.2rem); font-weight:bold; font-family:Orbitron,sans-serif; text-align:center; }
+        .section-label { font-size:0.8rem; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.4); font-family:Orbitron,sans-serif; width:100%; max-width:1100px; }
+
+        /* ── ADMIN ── */
+        .store-selector { width:100%; max-width:1100px; display:flex; gap:12px; flex-wrap:wrap; }
+        .store-tab { padding:9px 20px; border-radius:10px; border:2px solid rgba(255,255,255,0.3); background:transparent; color:rgba(255,255,255,0.55); font-family:Orbitron,sans-serif; font-size:0.85rem; cursor:pointer; transition:all 0.2s; }
+        .store-tab:hover { border-color:white; color:white; }
+        .store-tab.active { background:white; color:#05060A; border-color:white; }
+        .live-row { width:100%; max-width:1100px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+        .live-card { border:2px solid white; border-radius:20px; padding:22px 18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; min-height:120px; }
+        .live-card-label { font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.5); font-family:Orbitron,sans-serif; }
+        .live-card-value { font-family:Orbitron,sans-serif; font-size:clamp(1.8rem,4vw,2.8rem); line-height:1; }
+        .live-card-sub { font-size:0.85rem; color:rgba(255,255,255,0.5); }
+        .status { min-width:130px; min-height:42px; padding:8px 18px; border-radius:14px; display:inline-flex; justify-content:center; align-items:center; background-color:rgb(108,117,125); color:white; white-space:nowrap; font-family:Orbitron,sans-serif; font-size:1rem; line-height:1; transition:background-color 0.25s,color 0.25s; }
+        .status.not-busy { background-color:rgb(14,183,70); color:white; }
+        .status.moderate  { background-color:rgb(255,170,0); color:black; }
+        .status.busy      { background-color:rgb(220,53,69); color:white; }
+        .status.unknown   { background-color:rgb(108,117,125); color:white; }
+        .summary-tabs { width:100%; max-width:1100px; display:flex; gap:10px; flex-wrap:wrap; }
+        .sum-tab { padding:8px 18px; border-radius:10px; border:2px solid rgba(255,255,255,0.25); background:transparent; color:rgba(255,255,255,0.5); font-family:Orbitron,sans-serif; font-size:0.8rem; cursor:pointer; transition:all 0.2s; }
+        .sum-tab:hover { border-color:white; color:white; }
+        .sum-tab.active { background:white; color:#05060A; border-color:white; }
+        .analytics-grid { width:100%; max-width:1100px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; }
+        .analytics-card { border:2px solid white; border-radius:20px; padding:24px 18px; display:flex; flex-direction:column; gap:14px; min-height:160px; }
+        .analytics-card.full-width { grid-column:1/-1; }
+        .analytics-card-title { font-size:1.1rem; font-weight:bold; font-family:Orbitron,sans-serif; border-bottom:1px solid rgba(255,255,255,0.25); padding-bottom:10px; }
+        .analytics-card-value { font-family:Orbitron,sans-serif; font-size:clamp(1.4rem,3vw,2rem); line-height:1; }
+        .analytics-card-sub { font-size:0.9rem; color:rgba(255,255,255,0.5); margin-top:auto; }
+        .dist-bar-wrap { width:100%; height:16px; border-radius:8px; overflow:hidden; display:flex; background:rgba(255,255,255,0.08); }
+        .dist-segment { height:100%; transition:width 0.5s; }
+        .dist-segment.not-busy { background-color:rgb(14,183,70); }
+        .dist-segment.moderate  { background-color:rgb(255,170,0); }
+        .dist-segment.busy      { background-color:rgb(220,53,69); }
+        .dist-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:0.85rem; margin-top:4px; }
+        .legend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; }
+        .legend-dot.not-busy { background-color:rgb(14,183,70); }
+        .legend-dot.moderate  { background-color:rgb(255,170,0); }
+        .legend-dot.busy      { background-color:rgb(220,53,69); }
+        .chart-card { width:100%; max-width:1100px; border:2px solid white; border-radius:20px; padding:24px 18px; display:flex; flex-direction:column; gap:16px; }
+        .chart-title { font-size:1.1rem; font-weight:bold; font-family:Orbitron,sans-serif; border-bottom:1px solid rgba(255,255,255,0.25); padding-bottom:10px; }
+        .chart-area { width:100%; overflow-x:auto; }
+        .bar-chart { display:flex; align-items:flex-end; gap:4px; height:140px; min-width:500px; padding-bottom:28px; position:relative; }
+        .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative; }
+        .bar { width:100%; border-radius:4px 4px 0 0; background-color:rgb(14,183,70); min-height:2px; transition:height 0.4s; }
+        .bar.moderate { background-color:rgb(255,170,0); }
+        .bar.busy     { background-color:rgb(220,53,69); }
+        .bar.no-data  { background-color:rgba(255,255,255,0.1); }
+        .bar-label { font-size:0.58rem; color:rgba(255,255,255,0.4); position:absolute; bottom:-20px; white-space:nowrap; }
+        .bar-val   { font-size:0.6rem;  color:rgba(255,255,255,0.55); position:absolute; top:-16px; }
+        .log-card { width:100%; max-width:1100px; border:2px solid white; border-radius:20px; padding:24px 18px; display:flex; flex-direction:column; gap:14px; }
+        .log-title { font-size:1.1rem; font-weight:bold; font-family:Orbitron,sans-serif; border-bottom:1px solid rgba(255,255,255,0.25); padding-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+        .log-count-badge { font-size:0.8rem; background:rgba(255,255,255,0.1); padding:3px 10px; border-radius:20px; }
+        .log-list { display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; }
+        .log-item { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.05); font-size:0.9rem; gap:8px; flex-wrap:wrap; }
+        .log-time  { color:rgba(255,255,255,0.5); font-size:0.8rem; white-space:nowrap; }
+        .log-empty { text-align:center; color:rgba(255,255,255,0.3); font-size:0.9rem; padding:20px 0; }
+        .weekly-placeholder { width:100%; max-width:1100px; border:2px dashed rgba(255,255,255,0.2); border-radius:20px; padding:36px 18px; text-align:center; color:rgba(255,255,255,0.3); display:none; flex-direction:column; gap:10px; align-items:center; }
+        .weekly-placeholder.visible { display:flex; }
+        .weekly-placeholder-title { font-family:Orbitron,sans-serif; font-size:1rem; }
+
+        /* ── MEMBER VIEW ── */
+        .member-welcome { width:100%; max-width:1100px; border:2px solid white; border-radius:20px; padding:28px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+        .member-welcome-text h1 { font-family:Orbitron,sans-serif; font-size:clamp(1.2rem,4vw,1.8rem); margin-bottom:6px; }
+        .member-welcome-text p  { font-size:0.88rem; color:rgba(255,255,255,0.5); }
+        .member-avatar { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Orbitron,sans-serif; font-size:1.4rem; font-weight:bold; flex-shrink:0; }
+        .mstats-row { width:100%; max-width:1100px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+        .mstat-card { border:2px solid rgba(255,255,255,0.2); border-radius:16px; padding:18px 14px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+        .mstat-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.4); font-family:Orbitron,sans-serif; }
+        .mstat-value { font-family:Orbitron,sans-serif; font-size:clamp(1.6rem,4vw,2.4rem); line-height:1; font-weight:bold; }
+        .mtab-bar { width:100%; max-width:1100px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; }
+        .mtab-btn { padding:7px 18px; border-radius:10px; border:2px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.5); font-family:Orbitron,sans-serif; font-size:0.75rem; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:7px; }
+        .mtab-btn:hover { border-color:white; color:white; }
+        .mtab-btn.active { background:white; color:#05060A; border-color:white; }
+        .mtab-badge { font-size:0.65rem; background:rgba(0,0,0,0.15); padding:1px 6px; border-radius:8px; }
+        .mtab-btn.active .mtab-badge { background:rgba(0,0,0,0.2); }
+        .mticket-list { width:100%; max-width:1100px; display:flex; flex-direction:column; gap:12px; }
+        .mticket-card { border:2px solid rgba(255,255,255,0.12); border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:10px; transition:border-color 0.2s; }
+        .mticket-card:hover { border-color:rgba(255,255,255,0.3); }
+        .mticket-card.priority-high   { border-left:4px solid rgb(220,53,69); }
+        .mticket-card.priority-medium { border-left:4px solid rgb(255,170,0); }
+        .mticket-card.priority-low    { border-left:4px solid rgb(14,183,70); }
+        .mticket-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+        .mticket-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .mticket-id   { font-family:Orbitron,sans-serif; font-size:0.72rem; color:rgba(255,255,255,0.3); }
+        .mticket-time { font-size:0.75rem; color:rgba(255,255,255,0.3); }
+        .mticket-comment { font-size:0.92rem; color:rgba(255,255,255,0.75); line-height:1.5; }
+        .mticket-comment.empty { color:rgba(255,255,255,0.25); font-style:italic; }
+        .mticket-note { font-size:0.82rem; color:rgba(100,149,237,0.85); background:rgba(100,149,237,0.08); border:1px solid rgba(100,149,237,0.2); border-radius:8px; padding:8px 12px; }
+        .mbadge { font-family:Orbitron,sans-serif; font-size:0.65rem; font-weight:bold; padding:3px 9px; border-radius:8px; }
+        .mbadge.not-busy   { background:rgba(14,183,70,0.15);  color:rgb(14,183,70); }
+        .mbadge.moderate   { background:rgba(255,170,0,0.15);  color:rgb(255,170,0); }
+        .mbadge.busy       { background:rgba(220,53,69,0.15);  color:rgb(220,53,69); }
+        .mbadge.high       { background:rgba(220,53,69,0.12);  color:rgb(220,53,69); }
+        .mbadge.medium     { background:rgba(255,170,0,0.12);  color:rgb(255,170,0); }
+        .mbadge.low        { background:rgba(14,183,70,0.12);  color:rgb(14,183,70); }
+        .mbadge.open       { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.55); }
+        .mbadge.in_progress{ background:rgba(100,149,237,0.15); color:rgb(100,149,237); }
+        .mbadge.resolved   { background:rgba(14,183,70,0.15);   color:rgb(14,183,70); }
+        .mbadge.store-lbl  { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.4); font-size:0.6rem; }
+        .mact-row { display:flex; gap:8px; flex-wrap:wrap; }
+        .mact-btn { padding:6px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.55); font-size:0.78rem; cursor:pointer; transition:all 0.18s; font-family:sans-serif; }
+        .mact-btn.resolve  { border-color:rgb(14,183,70);  color:rgb(14,183,70); }
+        .mact-btn.resolve:hover  { background:rgb(14,183,70); color:#05060A; }
+        .mact-btn.progress { border-color:rgb(100,149,237); color:rgb(100,149,237); }
+        .mact-btn.progress:hover { background:rgb(100,149,237); color:white; }
+        .mact-btn.reopen:hover   { border-color:white; color:white; }
+        .empty-state { width:100%; max-width:1100px; border:2px dashed rgba(255,255,255,0.1); border-radius:16px; padding:48px 18px; text-align:center; color:rgba(255,255,255,0.25); font-size:0.9rem; }
+
+        .log-list::-webkit-scrollbar { width:4px; }
+        .log-list::-webkit-scrollbar-track { background:rgba(255,255,255,0.05); border-radius:4px; }
+        .log-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+        @media (max-width:768px) {
+            body { padding:14px; }
+            header { flex-direction:column; align-items:flex-start; gap:8px; }
+            main { margin-top:28px; }
+            .live-row,.analytics-grid { grid-template-columns:1fr; max-width:420px; }
+            .chart-card,.log-card,.summary-tabs,.section-label,.store-selector,.weekly-placeholder,
+            .member-welcome,.mstats-row,.mtab-bar,.mticket-list { max-width:420px; }
         }
     </style>
 </head>
 <body class="auth-pending">
-    <header>
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <a href="./stores.html" style="text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;transition:color 0.2s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
-            <a href="./tickets.html" style="text-decoration:none;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;letter-spacing:0.05em;padding:6px 14px;border-radius:8px;transition:background 0.2s ease;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage Tickets</a>
-        </div>
-        <div class="header-left">
-            <span class="material-symbols-outlined">location_on</span>
-            <div class="logo-text">Queue Monitoring System</div>
-            <span class="admin-badge">ADMIN</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div class="live-refresh">
-                <span class="online-status">●</span>
-                Last refresh:
-                <span class="refresh-hour">--</span>:<span class="refresh-mins">--</span>:<span class="refresh-seconds">--</span>
-            </div>
-            <div class="user-chip">
-                <span id="headerUserName" class="user-chip-name"></span>
-                <button class="signout-btn" id="signOutBtn">Sign Out</button>
-            </div>
-        </div>
-    </header>
 
-    <main>
-        <h1 class="page-heading">Queue Admin Dashboard</h1>
-        <div class="store-selector">
-            <button class="store-tab active" data-store="timhortons" type="button">Tim Hortons</button>
-            <button class="store-tab" data-store="starbucks" type="button">Starbucks</button>
-            <button class="store-tab" data-store="edojapan" type="button">Edo Japan</button>
+<header>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <a href="./stores.html" style="text-decoration:none;color:rgba(255,255,255,0.5);font-family:Orbitron,sans-serif;font-size:0.72rem;letter-spacing:0.05em;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">&#8592; Back</a>
+        <a href="./tickets.html" style="text-decoration:none;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;letter-spacing:0.05em;padding:6px 14px;border-radius:8px;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Tickets</a>
+    </div>
+    <div class="header-left">
+        <span class="material-symbols-outlined">location_on</span>
+        <div class="logo-text">Queue Monitoring System</div>
+        <span class="role-badge" id="roleBadge">...</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="live-refresh" id="clockArea" style="display:none;">
+            <span class="online-status">●</span>
+            Last refresh: <span class="refresh-hour">--</span>:<span class="refresh-mins">--</span>:<span class="refresh-seconds">--</span>
         </div>
-        <div class="section-label">Current Queue Status</div>
-        <div class="live-row">
-            <div class="live-card">
-                <div class="live-card-label">People In Queue</div>
-                <div class="live-card-value" id="liveCount">--</div>
-                <div class="live-card-sub">people right now</div>
-            </div>
-            <div class="live-card">
-                <div class="live-card-label">Queue Status</div>
-                <span class="status unknown" id="liveStatus">UNKNOWN</span>
-            </div>
-            <div class="live-card">
-                <div class="live-card-label">Wait Time</div>
-                <div class="live-card-value" id="liveWait">--</div>
-                <div class="live-card-sub">approx. minutes</div>
-            </div>
-            <div class="live-card">
-                <div class="live-card-label">Last Updated</div>
-                <div class="live-card-value" style="font-size:1.4rem;" id="liveTime">--:--:--</div>
-                <div class="live-card-sub">last queue update</div>
-            </div>
+        <div class="user-chip">
+            <span id="headerUserName" class="user-chip-name">—</span>
+            <button class="signout-btn" id="signOutBtn">Sign Out</button>
         </div>
-        <div class="section-label">View Summary</div>
-        <div class="summary-tabs">
-            <button class="sum-tab active" data-period="today" type="button">Today</button>
-            <button class="sum-tab" data-period="weekly" type="button">Weekly</button>
-        </div>
-        <div class="section-label" id="analyticsLabel">Today Summary</div>
-        <div class="analytics-grid" id="todayAnalytics">
-            <div class="analytics-card">
-                <div class="analytics-card-title">Peak Hour</div>
-                <div class="analytics-card-value" id="peakHour">--</div>
-                <div class="analytics-card-sub">Most busy hour recorded today</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Slowest Hour</div>
-                <div class="analytics-card-value" id="slowHour">--</div>
-                <div class="analytics-card-sub">Least busy hour recorded today</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Total Visitors</div>
-                <div class="analytics-card-value" id="totalVisitors">--</div>
-                <div class="analytics-card-sub">Rough total based on count changes</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Average Occupancy</div>
-                <div class="analytics-card-value" id="avgOccupancy">--</div>
-                <div class="analytics-card-sub">Average number of people today</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Max Occupancy</div>
-                <div class="analytics-card-value" id="maxOccupancy">--</div>
-                <div class="analytics-card-sub">Highest queue count today</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Min Occupancy</div>
-                <div class="analytics-card-value" id="minOccupancy">--</div>
-                <div class="analytics-card-sub">Lowest queue count today</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-card-title">Status Changes</div>
-                <div class="analytics-card-value" id="statusChanges">--</div>
-                <div class="analytics-card-sub">How many times the status changed today</div>
-            </div>
-            <div class="analytics-card full-width">
-                <div class="analytics-card-title">Time Spent in Each Status</div>
-                <div class="dist-bar-wrap">
-                    <div class="dist-segment not-busy" id="distNotBusy" style="width:0%"></div>
-                    <div class="dist-segment moderate"  id="distModerate" style="width:0%"></div>
-                    <div class="dist-segment busy"       id="distBusy"    style="width:0%"></div>
-                </div>
-                <div class="dist-legend">
-                    <span><span class="legend-dot not-busy"></span>Not Busy: <span id="distNotBusyPct">--%</span> (<span id="distNotBusyTime">--</span>)</span>
-                    <span><span class="legend-dot moderate"></span>Moderate: <span id="distModeratePct">--%</span> (<span id="distModerateTime">--</span>)</span>
-                    <span><span class="legend-dot busy"></span>Busy: <span id="distBusyPct">--%</span> (<span id="distBusyTime">--</span>)</span>
-                </div>
+    </div>
+</header>
+
+<!-- ════ ADMIN VIEW ════ -->
+<main id="adminView" style="display:none;">
+    <h1 class="page-heading">Queue Admin Dashboard</h1>
+    <div class="store-selector">
+        <button class="store-tab active" data-store="timhortons" type="button">Tim Hortons</button>
+        <button class="store-tab" data-store="starbucks" type="button">Starbucks</button>
+        <button class="store-tab" data-store="edojapan" type="button">Edo Japan</button>
+    </div>
+    <div class="section-label">Current Queue Status</div>
+    <div class="live-row">
+        <div class="live-card"><div class="live-card-label">People In Queue</div><div class="live-card-value" id="liveCount">--</div><div class="live-card-sub">people right now</div></div>
+        <div class="live-card"><div class="live-card-label">Queue Status</div><span class="status unknown" id="liveStatus">UNKNOWN</span></div>
+        <div class="live-card"><div class="live-card-label">Wait Time</div><div class="live-card-value" id="liveWait">--</div><div class="live-card-sub">approx. minutes</div></div>
+        <div class="live-card"><div class="live-card-label">Last Updated</div><div class="live-card-value" style="font-size:1.4rem;" id="liveTime">--:--:--</div><div class="live-card-sub">last queue update</div></div>
+    </div>
+    <div class="section-label">View Summary</div>
+    <div class="summary-tabs">
+        <button class="sum-tab active" data-period="today" type="button">Today</button>
+        <button class="sum-tab" data-period="weekly" type="button">Weekly</button>
+    </div>
+    <div class="section-label" id="analyticsLabel">Today Summary</div>
+    <div class="analytics-grid" id="todayAnalytics">
+        <div class="analytics-card"><div class="analytics-card-title">Peak Hour</div><div class="analytics-card-value" id="peakHour">--</div><div class="analytics-card-sub">Most busy hour today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Slowest Hour</div><div class="analytics-card-value" id="slowHour">--</div><div class="analytics-card-sub">Least busy hour today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Total Visitors</div><div class="analytics-card-value" id="totalVisitors">--</div><div class="analytics-card-sub">Rough total today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Average Occupancy</div><div class="analytics-card-value" id="avgOccupancy">--</div><div class="analytics-card-sub">Average people today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Max Occupancy</div><div class="analytics-card-value" id="maxOccupancy">--</div><div class="analytics-card-sub">Highest count today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Min Occupancy</div><div class="analytics-card-value" id="minOccupancy">--</div><div class="analytics-card-sub">Lowest count today</div></div>
+        <div class="analytics-card"><div class="analytics-card-title">Status Changes</div><div class="analytics-card-value" id="statusChanges">--</div><div class="analytics-card-sub">Times status changed today</div></div>
+        <div class="analytics-card full-width">
+            <div class="analytics-card-title">Time Spent in Each Status</div>
+            <div class="dist-bar-wrap"><div class="dist-segment not-busy" id="distNotBusy" style="width:0%"></div><div class="dist-segment moderate" id="distModerate" style="width:0%"></div><div class="dist-segment busy" id="distBusy" style="width:0%"></div></div>
+            <div class="dist-legend">
+                <span><span class="legend-dot not-busy"></span>Not Busy: <span id="distNotBusyPct">--%</span> (<span id="distNotBusyTime">--</span>)</span>
+                <span><span class="legend-dot moderate"></span>Moderate: <span id="distModeratePct">--%</span> (<span id="distModerateTime">--</span>)</span>
+                <span><span class="legend-dot busy"></span>Busy: <span id="distBusyPct">--%</span> (<span id="distBusyTime">--</span>)</span>
             </div>
         </div>
-        <div class="weekly-placeholder" id="weeklyPanel">
-            <div class="weekly-placeholder-title">Weekly Summary</div>
-            <div style="font-size:0.85rem;">This section will be used later when more weekly data is stored in the system.</div>
+    </div>
+    <div class="weekly-placeholder" id="weeklyPanel"><div class="weekly-placeholder-title">Weekly Summary</div><div style="font-size:0.85rem;">More weekly data needed.</div></div>
+    <div class="section-label">Hourly Queue Trend</div>
+    <div class="chart-card"><div class="chart-title">Average Queue Count by Hour</div><div class="chart-area"><div class="bar-chart" id="hourlyChart"></div></div></div>
+    <div class="section-label">Queue Status Log</div>
+    <div class="log-card">
+        <div class="log-title"><span>Today's Queue Status Changes</span><span class="log-count-badge" id="logCountBadge">0 changes</span></div>
+        <div class="log-list" id="statusLog"><div class="log-empty">No status changes recorded yet.</div></div>
+    </div>
+    <div class="section-label">Customer Reports</div>
+    <div class="log-card">
+        <div class="log-title"><span>Customer Submitted Reports (Last 24h)</span><span class="log-count-badge" id="reportCountBadge">0 reports</span></div>
+        <div class="log-list" id="customerReports"><div class="log-empty">No customer reports yet.</div></div>
+        <div style="margin-top:8px;"><a href="./tickets.html" style="text-decoration:none;display:inline-block;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;padding:8px 18px;border-radius:8px;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage All Tickets →</a></div>
+    </div>
+</main>
+
+<!-- ════ MEMBER VIEW ════ -->
+<main id="memberView" style="display:none;">
+    <div class="member-welcome">
+        <div class="member-welcome-text">
+            <h1 id="memberWelcomeTitle">Welcome!</h1>
+            <p>Here are your assigned tickets and personal stats</p>
         </div>
-        <div class="section-label">Hourly Queue Trend</div>
-        <div class="chart-card">
-            <div class="chart-title">Average Queue Count by Hour</div>
-            <div class="chart-area">
-                <div class="bar-chart" id="hourlyChart"></div>
-            </div>
-        </div>
-        <div class="section-label">Queue Status Log</div>
-        <div class="log-card">
-            <div class="log-title">
-                <span>Today's Queue Status Changes</span>
-                <span class="log-count-badge" id="logCountBadge">0 changes</span>
-            </div>
-            <div class="log-list" id="statusLog">
-                <div class="log-empty">No queue status changes recorded yet today.</div>
-            </div>
-        </div>
-        <div class="section-label">Customer Reports</div>
-        <div class="log-card">
-            <div class="log-title">
-                <span>Customer Submitted Reports (Last 24h)</span>
-                <span class="log-count-badge" id="reportCountBadge">0 reports</span>
-            </div>
-            <div class="log-list" id="customerReports">
-                <div class="log-empty">No customer reports submitted yet.</div>
-            </div>
-            <div style="margin-top:8px;">
-                <a href="./tickets.html" style="text-decoration:none;display:inline-block;background:rgb(14,183,70);color:#05060A;font-family:Orbitron,sans-serif;font-size:0.72rem;font-weight:bold;padding:8px 18px;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgb(10,150,55)'" onmouseout="this.style.background='rgb(14,183,70)'">🎫 Manage All Tickets →</a>
-            </div>
-        </div>
-    </main>
+        <div class="member-avatar" id="memberAvatar"></div>
+    </div>
+    <div class="section-label">Your Stats</div>
+    <div class="mstats-row">
+        <div class="mstat-card"><div class="mstat-label">Assigned</div><div class="mstat-value" id="mStatTotal" style="color:white">--</div></div>
+        <div class="mstat-card"><div class="mstat-label">Open</div><div class="mstat-value" id="mStatOpen" style="color:rgba(255,255,255,0.7)">--</div></div>
+        <div class="mstat-card"><div class="mstat-label">In Progress</div><div class="mstat-value" id="mStatProgress" style="color:rgb(100,149,237)">--</div></div>
+        <div class="mstat-card"><div class="mstat-label">Resolved</div><div class="mstat-value" id="mStatResolved" style="color:rgb(14,183,70)">--</div></div>
+        <div class="mstat-card"><div class="mstat-label">High Priority</div><div class="mstat-value" id="mStatHigh" style="color:rgb(220,53,69)">--</div></div>
+    </div>
+    <div class="section-label">My Tickets</div>
+    <div class="mtab-bar">
+        <button class="mtab-btn active" onclick="setMTab('open',this)">🔴 Open <span class="mtab-badge" id="mtOpen">0</span></button>
+        <button class="mtab-btn" onclick="setMTab('in_progress',this)">🔵 In Progress <span class="mtab-badge" id="mtProgress">0</span></button>
+        <button class="mtab-btn" onclick="setMTab('resolved',this)">✅ Resolved <span class="mtab-badge" id="mtResolved">0</span></button>
+        <button class="mtab-btn" onclick="setMTab('all',this)">All <span class="mtab-badge" id="mtAll">0</span></button>
+    </div>
+    <div class="mticket-list" id="memberTicketList">
+        <div class="empty-state">Loading your tickets...</div>
+    </div>
+</main>
 
-    <script>
-        /* ═══════════════════════════════
-           MSAL AUTH — must complete before
-           dashboard starts
-        ═══════════════════════════════ */
-        const msalConfig = {
-            auth: {
-                clientId:    "023f3ebd-fd48-4770-b359-7299300764c7",
-                authority:   "https://login.microsoftonline.com/5582e4ba-e088-4875-abf6-19f443f2815e",
-                redirectUri: window.location.origin + "/html/admin_standalone.html"
-            },
-            cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
-        };
+<script>
+/* ═══════════════════════════════════════
+   MSAL CONFIG
+═══════════════════════════════════════ */
+const msalConfig = {
+    auth: {
+        clientId:    "023f3ebd-fd48-4770-b359-7299300764c7",
+        authority:   "https://login.microsoftonline.com/5582e4ba-e088-4875-abf6-19f443f2815e",
+        redirectUri: window.location.origin + "/html/admin_standalone.html"
+    },
+    cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+};
 
-        async function initAuth() {
-            const msalInstance = new msal.PublicClientApplication(msalConfig);
-            await msalInstance.initialize();
+// ← Only this email gets full admin dashboard
+const ADMIN_EMAIL = "adminqms@subhnetarsinghicloud.onmicrosoft.com";
 
-            // Handle the redirect response from Microsoft login
-            const response = await msalInstance.handleRedirectPromise();
-            if (response && response.account) {
-                msalInstance.setActiveAccount(response.account);
-            }
+const MEMBER_COLORS = {
+    Subh:    { bg:"rgba(167,139,250,0.15)", color:"rgb(167,139,250)", init:"SU" },
+    Nerrisa: { bg:"rgba(91,143,255,0.15)",  color:"rgb(91,143,255)",  init:"NE" },
+    Navjot:  { bg:"rgba(14,183,70,0.15)",   color:"rgb(14,183,70)",   init:"NA" },
+    Omier:   { bg:"rgba(255,170,0,0.15)",   color:"rgb(255,170,0)",   init:"OM" },
+    Sandli:  { bg:"rgba(255,99,71,0.15)",   color:"rgb(255,120,90)",  init:"SA" },
+    default: { bg:"rgba(255,255,255,0.1)",  color:"white",            init:"??" }
+};
+const STORE_LABELS = { timhortons:"Tim Hortons", starbucks:"Starbucks", edojapan:"Edo Japan" };
 
-            const accounts = msalInstance.getAllAccounts();
-            if (accounts.length === 0) {
-                // Not signed in — send to login
-                sessionStorage.setItem("qms_return_to", window.location.href); window.location.href = "./admin_login.html";
-                return;
-            }
+let isAdmin      = false;
+let currentUser  = "";
+let memberTab    = "open";
+let allTickets   = [];
 
-            // ✅ Signed in — show page and start dashboard
-            const account = accounts[0];
-            document.body.classList.remove("auth-pending");
+/* ═══════════════════════════════════════
+   AUTH
+═══════════════════════════════════════ */
+async function initAuth() {
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+    const response = await msalInstance.handleRedirectPromise();
+    if (response && response.account) msalInstance.setActiveAccount(response.account);
 
-            const nameEl = document.getElementById("headerUserName");
-            if (nameEl) nameEl.textContent = account.name || account.username;
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length === 0) {
+        sessionStorage.setItem("qms_return_to", window.location.href);
+        window.location.href = "./admin_login.html";
+        return;
+    }
 
-            document.getElementById("signOutBtn").addEventListener("click", async () => {
-                await msalInstance.logoutRedirect({
-                    postLogoutRedirectUri: window.location.origin + "/html/main.html"
-                });
-            });
+    const account   = accounts[0];
+    const email     = (account.username || "").toLowerCase();
+    const fullName  = account.name || account.username;
+    const firstName = fullName.split(" ")[0];
+    currentUser     = firstName;
+    isAdmin         = email === ADMIN_EMAIL.toLowerCase();
 
-            // Start the dashboard now that auth is confirmed
-            startAdminDashboard();
-        }
+    document.body.classList.remove("auth-pending");
+    document.getElementById("headerUserName").textContent = fullName;
 
-        /* ═══════════════════════════════
-           DASHBOARD LOGIC
-        ═══════════════════════════════ */
-        function applyStatusColor(element, statusText) {
-            if (!element) return;
-            element.classList.remove("not-busy", "moderate", "busy", "unknown");
-            const s = (statusText || "").toUpperCase().trim();
-            if (s === "NOT BUSY" || s === "LOW")         element.classList.add("not-busy");
-            else if (s === "MODERATE" || s === "MEDIUM") element.classList.add("moderate");
-            else if (s === "BUSY")                       element.classList.add("busy");
-            else                                         element.classList.add("unknown");
-        }
+    const badge = document.getElementById("roleBadge");
+    if (isAdmin) {
+        badge.textContent  = "ADMIN";
+        badge.className    = "role-badge admin";
+        document.getElementById("clockArea").style.display = "block";
+        document.getElementById("adminView").style.display = "flex";
+        startAdminDashboard();
+    } else {
+        badge.textContent  = "MEMBER";
+        badge.className    = "role-badge member";
+        document.getElementById("memberView").style.display = "flex";
+        setupMemberView(firstName, fullName);
+        loadMemberTickets();
+        setInterval(loadMemberTickets, 15000);
+    }
 
-        async function fetchQueueData(store) {
-            try { const res = await fetch(`/queue?store=${store}`); if (!res.ok) throw new Error(); return await res.json(); }
-            catch (e) { return null; }
-        }
+    document.getElementById("signOutBtn").addEventListener("click", () => {
+        msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin + "/html/main.html" });
+    });
+}
 
-        function formatTimeParts(isoString) {
-            if (!isoString) return { hour: "--", mins: "--", secs: "--" };
-            const d = new Date(isoString);
-            return { hour: String(d.getHours()).padStart(2,"0"), mins: String(d.getMinutes()).padStart(2,"0"), secs: String(d.getSeconds()).padStart(2,"0") };
-        }
+/* ═══════════════════════════════════════
+   MEMBER VIEW
+═══════════════════════════════════════ */
+function setupMemberView(firstName, fullName) {
+    document.getElementById("memberWelcomeTitle").textContent = "Welcome, " + firstName + "!";
+    const mc = MEMBER_COLORS[firstName] || MEMBER_COLORS.default;
+    const av = document.getElementById("memberAvatar");
+    av.textContent   = mc.init;
+    av.style.background = mc.bg;
+    av.style.color      = mc.color;
+    av.style.border     = "2px solid " + mc.color;
+}
 
-        let currentStore = "timhortons", currentPeriod = "today";
-
-        function startAdminDashboard() {
-            bindStoreTabs(); bindSummaryTabs(); buildEmptyChart(); pollLive(); pollAnalytics();
-            setInterval(pollLive, 1500); setInterval(pollAnalytics, 10000); setInterval(updateClock, 1000);
-        }
-
-        function bindStoreTabs() {
-            document.querySelectorAll(".store-tab").forEach(btn => btn.addEventListener("click", () => {
-                document.querySelectorAll(".store-tab").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active"); currentStore = btn.dataset.store; pollLive(); pollAnalytics();
-            }));
-        }
-
-        function bindSummaryTabs() {
-            document.querySelectorAll(".sum-tab").forEach(btn => btn.addEventListener("click", () => {
-                document.querySelectorAll(".sum-tab").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active"); currentPeriod = btn.dataset.period; togglePeriodPanels();
-            }));
-        }
-
-        function togglePeriodPanels() {
-            const todayGrid  = document.getElementById("todayAnalytics");
-            const weeklyPanel = document.getElementById("weeklyPanel");
-            const label      = document.getElementById("analyticsLabel");
-            if (currentPeriod === "today") { todayGrid.style.display=""; weeklyPanel.classList.remove("visible"); label.textContent="Today Summary"; }
-            else { todayGrid.style.display="none"; weeklyPanel.classList.add("visible"); label.textContent="Weekly Summary"; }
-        }
-
-        async function pollLive() {
-            const data = await fetchQueueData(currentStore); if (!data) return;
-            setId("liveCount", data.people ?? "--");
-            const statusEl = document.getElementById("liveStatus");
-            if (statusEl) { statusEl.textContent = data.status ?? "UNKNOWN"; applyStatusColor(statusEl, data.status ?? "UNKNOWN"); }
-            setId("liveWait", data.people != null ? data.people * 2 : "--");
-            const t = formatTimeParts(data.updated); setId("liveTime", `${t.hour}:${t.mins}:${t.secs}`);
-        }
-
-        async function pollAnalytics() {
-            try { const res = await fetch(`/admin-analytics?store=${currentStore}&period=${currentPeriod}`); if (res.ok) renderAnalytics(await res.json()); } catch (e) {}
-        }
-
-        function renderAnalytics(data) {
-            if (!data) return;
-            setId("peakHour", data.peak_hour ?? "--"); setId("slowHour", data.slow_hour ?? "--");
-            setId("totalVisitors", data.total_visitors ?? "--");
-            setId("avgOccupancy", data.avg_occupancy != null ? data.avg_occupancy.toFixed(1) : "--");
-            setId("maxOccupancy", data.max_occupancy ?? "--"); setId("minOccupancy", data.min_occupancy ?? "--");
-            setId("statusChanges", data.status_changes ?? "--");
-            const dist = data.status_distribution;
-            if (dist) {
-                const total = (dist.not_busy_mins||0)+(dist.moderate_mins||0)+(dist.busy_mins||0);
-                const nbPct  = total ? Math.round(dist.not_busy_mins/total*100) : 0;
-                const modPct = total ? Math.round(dist.moderate_mins/total*100)  : 0;
-                const bPct   = total ? Math.round(dist.busy_mins/total*100)      : 0;
-                setWidth("distNotBusy",nbPct); setWidth("distModerate",modPct); setWidth("distBusy",bPct);
-                setId("distNotBusyPct",`${nbPct}%`); setId("distModeratePct",`${modPct}%`); setId("distBusyPct",`${bPct}%`);
-                setId("distNotBusyTime",minsToHuman(dist.not_busy_mins)); setId("distModerateTime",minsToHuman(dist.moderate_mins)); setId("distBusyTime",minsToHuman(dist.busy_mins));
-            }
-            if (data.hourly_avg)      renderHourlyChart(data.hourly_avg);
-            if (data.status_log)      renderStatusLog(data.status_log);
-            if (data.customer_reports) renderCustomerReports(data.customer_reports);
-        }
-
-        function buildEmptyChart() { renderHourlyChart(Array.from({length:24},(_,h)=>({hour:h,avg:null}))); }
-
-        function renderHourlyChart(hourlyAvg) {
-            const container = document.getElementById("hourlyChart"); if (!container) return;
-            const maxVal = Math.max(...hourlyAvg.map(h=>h.avg||0),1); container.innerHTML="";
-            hourlyAvg.forEach(h => {
-                const col = document.createElement("div"); col.className="bar-col";
-                const heightPct = h.avg!=null ? Math.round((h.avg/maxVal)*100) : 4;
-                const cls = h.avg==null?"no-data":h.avg>6?"busy":h.avg>=3?"moderate":"not-busy";
-                const valLabel = document.createElement("span"); valLabel.className="bar-val"; valLabel.textContent=h.avg!=null?h.avg.toFixed(1):"";
-                const bar = document.createElement("div"); bar.className=`bar ${cls}`; bar.style.height=`${heightPct}%`;
-                const label = document.createElement("span"); label.className="bar-label"; label.textContent=hourLabel(h.hour);
-                col.appendChild(valLabel); col.appendChild(bar); col.appendChild(label); container.appendChild(col);
-            });
-        }
-
-        function renderStatusLog(entries) {
-            const list  = document.getElementById("statusLog");
-            const badge = document.getElementById("logCountBadge");
-            if (!list) return;
-            if (!entries||entries.length===0) { list.innerHTML=`<div class="log-empty">No queue status changes recorded yet today.</div>`; if(badge)badge.textContent="0 changes"; return; }
-            if (badge) badge.textContent=`${entries.length} change${entries.length!==1?"s":""}`;
-            list.innerHTML=entries.slice().reverse().map(e=>{
-                const t=formatTimeParts(e.time);
-                return `<div class="log-item"><span>${e.from} → <strong>${e.to}</strong></span><span style="color:rgba(255,255,255,0.6)">${e.people!=null?e.people+" people":""}</span><span class="log-time">${t.hour}:${t.mins}:${t.secs}</span></div>`;
-            }).join("");
-        }
-
-        function updateClock() {
-            const now=new Date();
-            setClass("refresh-hour",  String(now.getHours()).padStart(2,"0"));
-            setClass("refresh-mins",  String(now.getMinutes()).padStart(2,"0"));
-            setClass("refresh-seconds",String(now.getSeconds()).padStart(2,"0"));
-        }
-
-        function renderCustomerReports(reports) {
-            const list  = document.getElementById("customerReports");
-            const badge = document.getElementById("reportCountBadge");
-            if (!list) return;
-            if (!reports||reports.length===0) { list.innerHTML='<div class="log-empty">No customer reports submitted yet.</div>'; if(badge)badge.textContent="0 reports"; return; }
-            if (badge) badge.textContent=reports.length+" report"+(reports.length!==1?"s":"");
-            list.innerHTML=reports.slice().reverse().map(r=>{
-                const t=formatTimeParts(r.submitted_at);
-                const c=r.reported_status==="NOT BUSY"?"rgb(14,183,70)":r.reported_status==="MODERATE"?"rgb(255,170,0)":"rgb(220,53,69)";
-                return '<div class="log-item">'
-                    +'<span style="color:'+c+';font-weight:bold">'+r.reported_status+'</span>'
-                    +'<span style="color:rgba(255,255,255,0.6);font-size:0.85rem">'+(r.comment||"")+'</span>'
-                    +'<span class="log-time">'+t.hour+':'+t.mins+':'+t.secs+'</span>'
-                    +'</div>';
-            }).join('');
-        }
-
-        function setId(id,val)   { const e=document.getElementById(id);   if(e) e.textContent=val; }
-        function setClass(cls,val){ const e=document.querySelector('.'+cls); if(e) e.textContent=val; }
-        function setWidth(id,pct) { const e=document.getElementById(id);   if(e) e.style.width=pct+'%'; }
-        function minsToHuman(m)   { if(m==null)return"--"; if(m<60)return m+"m"; return Math.floor(m/60)+"h "+m%60+"m"; }
-        function hourLabel(h)     { if(h===0)return"12a"; if(h<12)return h+"a"; if(h===12)return"12p"; return(h-12)+"p"; }
-
-        /* ── Boot: auth first, then dashboard ── */
-        initAuth().catch(err => {
-            console.error("Fatal auth error:", err);
-            sessionStorage.setItem("qms_return_to", window.location.href); window.location.href = "./admin_login.html";
+async function loadMemberTickets() {
+    try {
+        const res = await fetch("/tickets");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const raw = await res.json();
+        allTickets = raw.slice().reverse().map(t => {
+            const rs = (t.reported_status||"").toUpperCase();
+            return Object.assign({ ticket_status:"open", priority:rs==="BUSY"?"high":rs==="MODERATE"?"medium":"low", admin_note:"", assignee:"", updated_at:null }, t);
         });
-    </script>
+        renderMemberView();
+    } catch(e) {
+        document.getElementById("memberTicketList").innerHTML = `<div class="empty-state">Could not load tickets (${e.message})</div>`;
+    }
+}
+
+function renderMemberView() {
+    const mine = allTickets.filter(t => t.assignee === currentUser);
+    const s = id => document.getElementById(id);
+
+    s("mStatTotal").textContent    = mine.length;
+    s("mStatOpen").textContent     = mine.filter(t=>t.ticket_status==="open").length;
+    s("mStatProgress").textContent = mine.filter(t=>t.ticket_status==="in_progress").length;
+    s("mStatResolved").textContent = mine.filter(t=>t.ticket_status==="resolved").length;
+    s("mStatHigh").textContent     = mine.filter(t=>t.priority==="high").length;
+    s("mtOpen").textContent        = mine.filter(t=>t.ticket_status==="open").length;
+    s("mtProgress").textContent    = mine.filter(t=>t.ticket_status==="in_progress").length;
+    s("mtResolved").textContent    = mine.filter(t=>t.ticket_status==="resolved").length;
+    s("mtAll").textContent         = mine.length;
+
+    const filtered = memberTab === "all" ? mine : mine.filter(t=>t.ticket_status===memberTab);
+    const list = s("memberTicketList");
+
+    if (!filtered.length) {
+        const msgs = { open:"No open tickets assigned to you 🎉", in_progress:"Nothing in progress.", resolved:"No resolved tickets yet.", all:"No tickets assigned to you yet." };
+        list.innerHTML = `<div class="empty-state">${msgs[memberTab]||"No tickets."}</div>`;
+        return;
+    }
+    list.innerHTML = filtered.map(buildMemberCard).join("");
+}
+
+function buildMemberCard(t) {
+    const prio  = t.priority||"low";
+    const ts    = t.ticket_status||"open";
+    const sc    = t.reported_status==="NOT BUSY"?"not-busy":t.reported_status==="MODERATE"?"moderate":t.reported_status==="BUSY"?"busy":"";
+    const tsLbl = ts==="in_progress"?"In Progress":ts.charAt(0).toUpperCase()+ts.slice(1);
+    const store = STORE_LABELS[t.store]||t.store||"";
+    const upd   = t.updated_at?" · Updated "+fmtTime(t.updated_at):"";
+    const note  = t.admin_note ? `<div class="mticket-note">📝 ${t.admin_note}</div>` : "";
+
+    let actions = "";
+    if (ts==="open")
+        actions = `<button class="mact-btn progress" onclick="mUpdateStatus('${t.id}','in_progress')">▶ In Progress</button>
+                   <button class="mact-btn resolve"  onclick="mUpdateStatus('${t.id}','resolved')">✔ Resolve</button>`;
+    else if (ts==="in_progress")
+        actions = `<button class="mact-btn resolve" onclick="mUpdateStatus('${t.id}','resolved')">✔ Resolve</button>
+                   <button class="mact-btn reopen"  onclick="mUpdateStatus('${t.id}','open')">↩ Reopen</button>`;
+    else
+        actions = `<button class="mact-btn reopen" onclick="mUpdateStatus('${t.id}','open')">↩ Reopen</button>`;
+
+    return `<div class="mticket-card priority-${prio}" id="mcard-${t.id}">
+        <div class="mticket-top">
+            <div class="mticket-meta">
+                <span class="mticket-id">#${t.id}</span>
+                ${sc?`<span class="mbadge ${sc}">${t.reported_status}</span>`:""}
+                <span class="mbadge ${prio}">${prio.toUpperCase()}</span>
+                <span class="mbadge ${ts}">${tsLbl}</span>
+                ${store?`<span class="mbadge store-lbl">${store}</span>`:""}
+            </div>
+            <span class="mticket-time">${fmtTime(t.submitted_at)}${upd}</span>
+        </div>
+        <div class="mticket-comment ${!t.comment?"empty":""}">${t.comment||"No comment provided"}</div>
+        ${note}
+        <div class="mact-row">${actions}</div>
+    </div>`;
+}
+
+async function mUpdateStatus(id, newStatus) {
+    const card = document.getElementById("mcard-"+id);
+    if (card) card.style.opacity="0.5";
+    try {
+        const res = await fetch("/tickets/"+id, {
+            method:"PATCH", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ ticket_status: newStatus })
+        });
+        if (!res.ok) throw new Error();
+        const idx = allTickets.findIndex(t=>String(t.id)===String(id));
+        if (idx!==-1) { allTickets[idx].ticket_status=newStatus; allTickets[idx].updated_at=new Date().toISOString(); }
+        renderMemberView();
+    } catch { if(card) card.style.opacity="1"; alert("Could not update ticket."); }
+}
+
+function setMTab(tab, btn) {
+    memberTab = tab;
+    document.querySelectorAll(".mtab-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    renderMemberView();
+}
+
+/* ═══════════════════════════════════════
+   ADMIN DASHBOARD (unchanged logic)
+═══════════════════════════════════════ */
+function applyStatusColor(el, s) {
+    if (!el) return;
+    el.classList.remove("not-busy","moderate","busy","unknown");
+    const u=(s||"").toUpperCase().trim();
+    if(u==="NOT BUSY"||u==="LOW") el.classList.add("not-busy");
+    else if(u==="MODERATE"||u==="MEDIUM") el.classList.add("moderate");
+    else if(u==="BUSY") el.classList.add("busy");
+    else el.classList.add("unknown");
+}
+async function fetchQueueData(store) {
+    try { const r=await fetch(`/queue?store=${store}`); if(!r.ok) throw new Error(); return await r.json(); } catch { return null; }
+}
+function formatTimeParts(iso) {
+    if(!iso) return{hour:"--",mins:"--",secs:"--"};
+    const d=new Date(iso);
+    return{hour:String(d.getHours()).padStart(2,"0"),mins:String(d.getMinutes()).padStart(2,"0"),secs:String(d.getSeconds()).padStart(2,"0")};
+}
+let currentStore="timhortons", currentPeriod="today";
+function startAdminDashboard() {
+    bindStoreTabs(); bindSummaryTabs(); buildEmptyChart(); pollLive(); pollAnalytics();
+    setInterval(pollLive,1500); setInterval(pollAnalytics,10000); setInterval(updateClock,1000);
+}
+function bindStoreTabs() {
+    document.querySelectorAll(".store-tab").forEach(btn=>btn.addEventListener("click",()=>{
+        document.querySelectorAll(".store-tab").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active"); currentStore=btn.dataset.store; pollLive(); pollAnalytics();
+    }));
+}
+function bindSummaryTabs() {
+    document.querySelectorAll(".sum-tab").forEach(btn=>btn.addEventListener("click",()=>{
+        document.querySelectorAll(".sum-tab").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active"); currentPeriod=btn.dataset.period; togglePeriodPanels();
+    }));
+}
+function togglePeriodPanels() {
+    const tg=document.getElementById("todayAnalytics"),wp=document.getElementById("weeklyPanel"),lb=document.getElementById("analyticsLabel");
+    if(currentPeriod==="today"){tg.style.display="";wp.classList.remove("visible");lb.textContent="Today Summary";}
+    else{tg.style.display="none";wp.classList.add("visible");lb.textContent="Weekly Summary";}
+}
+async function pollLive() {
+    const data=await fetchQueueData(currentStore); if(!data) return;
+    setId("liveCount",data.people??"--");
+    const se=document.getElementById("liveStatus");
+    if(se){se.textContent=data.status??"UNKNOWN";applyStatusColor(se,data.status??"UNKNOWN");}
+    setId("liveWait",data.people!=null?data.people*2:"--");
+    const t=formatTimeParts(data.updated); setId("liveTime",`${t.hour}:${t.mins}:${t.secs}`);
+}
+async function pollAnalytics() {
+    try{const r=await fetch(`/admin-analytics?store=${currentStore}&period=${currentPeriod}`);if(r.ok)renderAnalytics(await r.json());}catch{}
+}
+function renderAnalytics(data) {
+    if(!data) return;
+    setId("peakHour",data.peak_hour??"--");setId("slowHour",data.slow_hour??"--");
+    setId("totalVisitors",data.total_visitors??"--");
+    setId("avgOccupancy",data.avg_occupancy!=null?data.avg_occupancy.toFixed(1):"--");
+    setId("maxOccupancy",data.max_occupancy??"--");setId("minOccupancy",data.min_occupancy??"--");
+    setId("statusChanges",data.status_changes??"--");
+    const dist=data.status_distribution;
+    if(dist){
+        const total=(dist.not_busy_mins||0)+(dist.moderate_mins||0)+(dist.busy_mins||0);
+        const nb=total?Math.round(dist.not_busy_mins/total*100):0;
+        const mo=total?Math.round(dist.moderate_mins/total*100):0;
+        const bu=total?Math.round(dist.busy_mins/total*100):0;
+        setWidth("distNotBusy",nb);setWidth("distModerate",mo);setWidth("distBusy",bu);
+        setId("distNotBusyPct",`${nb}%`);setId("distModeratePct",`${mo}%`);setId("distBusyPct",`${bu}%`);
+        setId("distNotBusyTime",minsToHuman(dist.not_busy_mins));setId("distModerateTime",minsToHuman(dist.moderate_mins));setId("distBusyTime",minsToHuman(dist.busy_mins));
+    }
+    if(data.hourly_avg)renderHourlyChart(data.hourly_avg);
+    if(data.status_log)renderStatusLog(data.status_log);
+    if(data.customer_reports)renderCustomerReports(data.customer_reports);
+}
+function buildEmptyChart(){renderHourlyChart(Array.from({length:24},(_,h)=>({hour:h,avg:null})));}
+function renderHourlyChart(hourlyAvg){
+    const c=document.getElementById("hourlyChart");if(!c)return;
+    const mx=Math.max(...hourlyAvg.map(h=>h.avg||0),1);c.innerHTML="";
+    hourlyAvg.forEach(h=>{
+        const col=document.createElement("div");col.className="bar-col";
+        const hp=h.avg!=null?Math.round((h.avg/mx)*100):4;
+        const cl=h.avg==null?"no-data":h.avg>6?"busy":h.avg>=3?"moderate":"not-busy";
+        const vl=document.createElement("span");vl.className="bar-val";vl.textContent=h.avg!=null?h.avg.toFixed(1):"";
+        const br=document.createElement("div");br.className=`bar ${cl}`;br.style.height=`${hp}%`;
+        const lb=document.createElement("span");lb.className="bar-label";lb.textContent=hourLabel(h.hour);
+        col.appendChild(vl);col.appendChild(br);col.appendChild(lb);c.appendChild(col);
+    });
+}
+function renderStatusLog(entries){
+    const list=document.getElementById("statusLog"),badge=document.getElementById("logCountBadge");if(!list)return;
+    if(!entries||!entries.length){list.innerHTML=`<div class="log-empty">No status changes yet.</div>`;if(badge)badge.textContent="0 changes";return;}
+    if(badge)badge.textContent=`${entries.length} change${entries.length!==1?"s":""}`;
+    list.innerHTML=entries.slice().reverse().map(e=>{const t=formatTimeParts(e.time);return`<div class="log-item"><span>${e.from} → <strong>${e.to}</strong></span><span style="color:rgba(255,255,255,0.6)">${e.people!=null?e.people+" people":""}</span><span class="log-time">${t.hour}:${t.mins}:${t.secs}</span></div>`;}).join("");
+}
+function updateClock(){
+    const n=new Date();
+    setClass("refresh-hour",String(n.getHours()).padStart(2,"0"));
+    setClass("refresh-mins",String(n.getMinutes()).padStart(2,"0"));
+    setClass("refresh-seconds",String(n.getSeconds()).padStart(2,"0"));
+}
+function renderCustomerReports(reports){
+    const list=document.getElementById("customerReports"),badge=document.getElementById("reportCountBadge");if(!list)return;
+    if(!reports||!reports.length){list.innerHTML='<div class="log-empty">No customer reports yet.</div>';if(badge)badge.textContent="0 reports";return;}
+    if(badge)badge.textContent=reports.length+" report"+(reports.length!==1?"s":"");
+    list.innerHTML=reports.slice().reverse().map(r=>{
+        const t=formatTimeParts(r.submitted_at);
+        const c=r.reported_status==="NOT BUSY"?"rgb(14,183,70)":r.reported_status==="MODERATE"?"rgb(255,170,0)":"rgb(220,53,69)";
+        return`<div class="log-item"><span style="color:${c};font-weight:bold">${r.reported_status}</span><span style="color:rgba(255,255,255,0.6);font-size:0.85rem">${r.comment||""}</span><span class="log-time">${t.hour}:${t.mins}:${t.secs}</span></div>`;
+    }).join("");
+}
+function setId(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function setClass(c,v){const e=document.querySelector("."+c);if(e)e.textContent=v;}
+function setWidth(id,p){const e=document.getElementById(id);if(e)e.style.width=p+"%";}
+function minsToHuman(m){if(m==null)return"--";if(m<60)return m+"m";return Math.floor(m/60)+"h "+m%60+"m";}
+function hourLabel(h){if(h===0)return"12a";if(h<12)return h+"a";if(h===12)return"12p";return(h-12)+"p";}
+function fmtTime(iso){if(!iso)return"--";const d=new Date(iso);return d.toLocaleDateString("en-CA")+" "+pad(d.getHours())+":"+pad(d.getMinutes());}
+function pad(n){return String(n).padStart(2,"0");}
+
+/* ── Boot ── */
+initAuth().catch(err=>{
+    console.error("Auth error:",err);
+    sessionStorage.setItem("qms_return_to", window.location.href);
+    window.location.href="./admin_login.html";
+});
+</script>
 </body>
 </html>
