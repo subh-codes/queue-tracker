@@ -210,7 +210,7 @@
                 // Already signed in — skip login page
                 const accounts = msalInstance.getAllAccounts();
                 if (accounts.length > 0) {
-                    window.location.href = "./admin_standalone.html";
+                    const returnTo = sessionStorage.getItem("qms_return_to") || "./admin_standalone.html"; sessionStorage.removeItem("qms_return_to"); window.location.href = returnTo;
                     return;
                 }
 
