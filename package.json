@@ -1,19 +1,17 @@
 {
-  "name": "queue-tracker",
-  "version": "1.0.0",
-  "description": "Queue Tracker Azure Web App",
+  "name": "queue-tracker-azure",
+  "version": "3.0.0",
+  "description": "Queue Tracker — with Blob Storage, email alerts, Entra ID",
   "main": "server.js",
-
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev":   "node server.js"
   },
-
   "dependencies": {
-    "express": "^4.18.2",
-    "@azure/storage-blob": "^12.17.0"
+    "express":                        "^4.18.2",
+    "@azure/storage-blob":            "^12.17.0",
+    "@azure/communication-email":     "^1.0.0"
   },
-
   "engines": {
     "node": ">=18"
   }
