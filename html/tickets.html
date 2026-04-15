@@ -7,16 +7,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; background: #05060A; color: white; min-height: 100vh; padding: 12px; }
+        body.auth-pending { visibility: hidden; }
 
         /* ── Header ── */
         header { min-height: 60px; border-bottom: 1px solid white; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 4px 14px; flex-wrap: wrap; }
         .back-link { text-decoration: none; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; font-size: 0.72rem; letter-spacing: 0.05em; transition: color 0.2s; }
         .back-link:hover { color: white; }
         .header-title { font-family: Orbitron, sans-serif; font-size: clamp(1rem,4vw,1.5rem); font-weight: bold; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
         .header-badge { font-size: 0.7rem; font-family: Orbitron, sans-serif; background: rgb(14,183,70); color: #05060A; padding: 3px 10px; border-radius: 6px; font-weight: bold; }
+        .header-user { font-size: 0.72rem; color: rgba(255,255,255,0.5); font-family: Orbitron, sans-serif; }
+        .signout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45); font-family: Orbitron, sans-serif; font-size: 0.65rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .signout-btn:hover { border-color: rgb(220,53,69); color: rgb(220,53,69); }
 
         /* ── Layout ── */
         main { display: flex; flex-direction: column; align-items: center; gap: 22px; margin-top: 28px; padding-bottom: 48px; }
@@ -41,11 +47,9 @@
         .search-input { flex: 1; min-width: 180px; padding: 9px 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); color: white; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
         .search-input:focus { border-color: rgb(14,183,70); }
         .search-input::placeholder { color: rgba(255,255,255,0.2); }
-
         .toolbar-select { padding: 9px 12px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-family: sans-serif; font-size: 0.82rem; outline: none; cursor: pointer; transition: border-color 0.2s; }
         .toolbar-select:focus { border-color: rgb(14,183,70); }
         .toolbar-select option { background: #111; }
-
         .filter-btn { padding: 8px 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.45); font-family: Orbitron, sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .filter-btn:hover { border-color: white; color: white; }
         .filter-btn.active { background: white; color: #05060A; border-color: white; }
@@ -55,18 +59,14 @@
 
         /* ── Ticket cards ── */
         .ticket-list { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 12px; }
-
         .ticket-card { border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.2s; }
         .ticket-card:hover { border-color: rgba(255,255,255,0.35); }
         .ticket-card.priority-high   { border-left: 4px solid rgb(220,53,69); }
         .ticket-card.priority-medium { border-left: 4px solid rgb(255,170,0); }
         .ticket-card.priority-low    { border-left: 4px solid rgb(14,183,70); }
-
         .ticket-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
         .ticket-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
         .ticket-id { font-family: Orbitron, sans-serif; font-size: 0.75rem; color: rgba(255,255,255,0.35); }
-
         .badge { font-family: Orbitron, sans-serif; font-size: 0.68rem; font-weight: bold; padding: 3px 10px; border-radius: 8px; }
         .badge.not-busy  { background: rgba(14,183,70,0.15);  color: rgb(14,183,70); }
         .badge.moderate  { background: rgba(255,170,0,0.15);  color: rgb(255,170,0); }
@@ -80,35 +80,25 @@
         .badge.issue       { background: rgba(255,140,0,0.15);    color: rgb(255,140,0); }
         .badge.type-issue  { background: rgba(255,80,80,0.12);    color: rgb(255,120,120); font-size:0.62rem; }
         .badge.type-queue  { background: rgba(255,255,255,0.06);  color: rgba(255,255,255,0.4); font-size:0.62rem; }
-
-        /* ── NEW: assignee badge ── */
         .badge.assignee-Subh    { background: rgba(167,139,250,0.15); color: rgb(167,139,250); }
         .badge.assignee-Nerrisa { background: rgba(91,143,255,0.15);  color: rgb(91,143,255); }
         .badge.assignee-Navjot  { background: rgba(14,183,70,0.15);   color: rgb(14,183,70); }
         .badge.assignee-Omier   { background: rgba(255,170,0,0.15);   color: rgb(255,170,0); }
         .badge.assignee-Sandli  { background: rgba(255,99,71,0.15);   color: rgb(255,120,90); }
         .badge.unassigned       { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); }
-
         .ticket-comment { font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.5; }
         .ticket-comment.empty { color: rgba(255,255,255,0.25); font-style: italic; }
-
         .ticket-time { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
-
-        /* ── NEW: expanded controls row ── */
         .controls-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; padding: 10px 0 4px; border-top: 1px solid rgba(255,255,255,0.06); }
         .control-group { display: flex; flex-direction: column; gap: 5px; }
         .control-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); font-family: Orbitron, sans-serif; }
         .inline-select { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-family: sans-serif; font-size: 0.82rem; outline: none; cursor: pointer; transition: border-color 0.2s; min-width: 130px; }
         .inline-select:focus { border-color: rgb(14,183,70); }
         .inline-select option { background: #111; }
-
-        /* Admin note */
         .admin-note-row { display: flex; gap: 8px; align-items: flex-start; flex: 1; min-width: 220px; }
         .admin-note-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-size: 0.85rem; font-family: sans-serif; resize: none; outline: none; min-height: 36px; max-height: 100px; transition: border-color 0.2s; }
         .admin-note-input:focus { border-color: rgb(14,183,70); }
         .admin-note-input::placeholder { color: rgba(255,255,255,0.2); }
-
-        /* Action buttons */
         .ticket-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .action-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.55); font-size: 0.78rem; cursor: pointer; transition: all 0.18s; font-family: sans-serif; }
         .action-btn:hover { border-color: white; color: white; }
@@ -122,12 +112,12 @@
         .action-btn.save-note:hover { background: rgb(14,183,70); color: #05060A; }
         .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+        /* assign-to-me button */
+        .action-btn.assign-me { border-color: rgba(167,139,250,0.5); color: rgb(167,139,250); font-size: 0.72rem; }
+        .action-btn.assign-me:hover { background: rgba(167,139,250,0.15); border-color: rgb(167,139,250); }
+
         .save-feedback { font-size: 0.75rem; color: rgb(14,183,70); display: none; }
-
-        /* Empty state */
         .empty-state { width: 100%; max-width: 1100px; border: 2px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 52px 18px; text-align: center; color: rgba(255,255,255,0.25); font-size: 0.95rem; }
-
-        /* Action bar */
         .action-bar { width: 100%; max-width: 1100px; display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .refresh-info { font-size: 0.8rem; color: rgba(255,255,255,0.3); }
         .top-action-btn { padding: 9px 18px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.55); font-family: Orbitron, sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; }
@@ -135,8 +125,6 @@
         .top-action-btn.danger:hover { border-color: rgb(220,53,69); color: rgb(220,53,69); }
         .top-action-btn.primary { background: rgb(14,183,70); border-color: rgb(14,183,70); color: #05060A; font-weight: bold; }
         .top-action-btn.primary:hover { background: rgb(10,150,55); }
-
-        /* Modal */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
         .modal-overlay.visible { display: flex; }
         .modal { background: #05060A; border: 2px solid white; border-radius: 20px; padding: 30px 26px; max-width: 460px; width: 100%; display: flex; flex-direction: column; gap: 18px; }
@@ -144,12 +132,9 @@
         .modal-body { font-size: 0.9rem; color: rgba(255,255,255,0.65); line-height: 1.7; }
         .modal-body strong { color: white; }
         .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
         ::-webkit-scrollbar-thumb { background: rgba(14,183,70,0.35); border-radius: 4px; }
-
         @media (max-width: 768px) {
             .stats-row, .tab-bar, .toolbar, .ticket-list, .action-bar, .section-label { max-width: 420px; }
             .ticket-top { flex-direction: column; }
@@ -157,46 +142,29 @@
         }
     </style>
 </head>
-<body>
+<body class="auth-pending">
 
 <header>
     <a href="admin_standalone.html" class="back-link">&#8592; Back to Dashboard</a>
     <div class="header-title">Ticket Management</div>
-    <span class="header-badge">ADMIN</span>
+    <div class="header-right">
+        <span class="header-badge">ADMIN</span>
+        <span class="header-user" id="headerUser"></span>
+        <button class="signout-btn" id="signOutBtn">Sign Out</button>
+    </div>
 </header>
 
 <main>
-
-    <!-- Stats -->
     <div class="section-label">Overview</div>
     <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-label">Total</div>
-            <div class="stat-value" id="statTotal">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Open</div>
-            <div class="stat-value" id="statOpen" style="color:rgba(255,255,255,0.7)">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">In Progress</div>
-            <div class="stat-value" id="statInProgress" style="color:rgb(100,149,237)">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Resolved</div>
-            <div class="stat-value" id="statResolved" style="color:rgb(14,183,70)">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">High Priority</div>
-            <div class="stat-value" id="statHigh" style="color:rgb(220,53,69)">--</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Unassigned</div>
-            <div class="stat-value" id="statUnassigned" style="color:rgba(255,255,255,0.4)">--</div>
-        </div>
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="statTotal">--</div></div>
+        <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value" id="statOpen" style="color:rgba(255,255,255,0.7)">--</div></div>
+        <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" id="statInProgress" style="color:rgb(100,149,237)">--</div></div>
+        <div class="stat-card"><div class="stat-label">Resolved</div><div class="stat-value" id="statResolved" style="color:rgb(14,183,70)">--</div></div>
+        <div class="stat-card"><div class="stat-label">High Priority</div><div class="stat-value" id="statHigh" style="color:rgb(220,53,69)">--</div></div>
+        <div class="stat-card"><div class="stat-label">Unassigned</div><div class="stat-value" id="statUnassigned" style="color:rgba(255,255,255,0.4)">--</div></div>
     </div>
 
-    <!-- Tabs -->
     <div class="tab-bar">
         <button class="tab-btn active" data-tab="open"        onclick="setTab('open',this)">🔴 Open <span class="tab-badge" id="badgeOpen">0</span></button>
         <button class="tab-btn"        data-tab="in_progress" onclick="setTab('in_progress',this)">🔵 In Progress <span class="tab-badge" id="badgeInProgress">0</span></button>
@@ -204,11 +172,8 @@
         <button class="tab-btn"        data-tab="all"         onclick="setTab('all',this)">All <span class="tab-badge" id="badgeAll">0</span></button>
     </div>
 
-    <!-- Toolbar -->
     <div class="toolbar">
         <input type="text" class="search-input" id="searchInput" placeholder="Search by comment, ID, assignee..." oninput="renderTickets()">
-
-        <!-- NEW: filter by assignee -->
         <select class="toolbar-select" id="filterAssignee" onchange="renderTickets()">
             <option value="">All Assignees</option>
             <option value="__unassigned__">Unassigned</option>
@@ -218,35 +183,28 @@
             <option value="Omier">Omier</option>
             <option value="Sandli">Sandli</option>
         </select>
-
-        <!-- NEW: filter by store -->
         <select class="toolbar-select" id="filterStore" onchange="renderTickets()">
             <option value="">All Stores</option>
             <option value="timhortons">Tim Hortons</option>
             <option value="starbucks">Starbucks</option>
             <option value="edojapan">Edo Japan</option>
         </select>
-
-        <!-- NEW: sort -->
         <select class="toolbar-select" id="sortBy" onchange="renderTickets()">
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
             <option value="priority">By Priority</option>
             <option value="updated">Recently Updated</option>
         </select>
-
         <button class="filter-btn active" data-priority="all"    onclick="setPriority('all',this)">All Priority</button>
         <button class="filter-btn high"   data-priority="high"   onclick="setPriority('high',this)">🔴 High</button>
         <button class="filter-btn medium" data-priority="medium" onclick="setPriority('medium',this)">🟡 Medium</button>
         <button class="filter-btn low"    data-priority="low"    onclick="setPriority('low',this)">🟢 Low</button>
     </div>
 
-    <!-- Ticket list -->
     <div class="ticket-list" id="ticketList">
         <div class="empty-state">Loading tickets from Azure...</div>
     </div>
 
-    <!-- Bottom action bar -->
     <div class="action-bar">
         <span class="refresh-info" id="refreshInfo">Auto-refreshes every 15s</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -254,10 +212,8 @@
             <button class="top-action-btn danger" onclick="showClearModal()">🗑 Clear All</button>
         </div>
     </div>
-
 </main>
 
-<!-- Clear modal -->
 <div class="modal-overlay" id="clearModal">
     <div class="modal">
         <div class="modal-title">Clear All Tickets?</div>
@@ -270,20 +226,66 @@
 </div>
 
 <script>
+    /* ═══════════════════════════════
+       MSAL AUTH
+    ═══════════════════════════════ */
+    const msalConfig = {
+        auth: {
+            clientId:    "023f3ebd-fd48-4770-b359-7299300764c7",
+            authority:   "https://login.microsoftonline.com/5582e4ba-e088-4875-abf6-19f443f2815e",
+            redirectUri: window.location.origin + "/html/tickets.html"
+        },
+        cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+    };
+
+    let currentUserName = "";
+
+    async function initAuth() {
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        await msalInstance.initialize();
+
+        const response = await msalInstance.handleRedirectPromise();
+        if (response && response.account) {
+            msalInstance.setActiveAccount(response.account);
+        }
+
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length === 0) {
+            window.location.href = "./admin_login.html";
+            return;
+        }
+
+        const account = accounts[0];
+        document.body.classList.remove("auth-pending");
+
+        // Extract first name to match TEAM array
+        const fullName  = account.name || account.username;
+        const firstName = fullName.split(" ")[0];
+        currentUserName = firstName;
+
+        document.getElementById("headerUser").textContent = fullName;
+        document.getElementById("signOutBtn").addEventListener("click", () => {
+            msalInstance.logoutRedirect({
+                postLogoutRedirectUri: window.location.origin + "/html/main.html"
+            });
+        });
+
+        // Start app
+        loadTickets();
+        setInterval(loadTickets, 15000);
+    }
+
+    /* ═══════════════════════════════
+       TICKET LOGIC
+    ═══════════════════════════════ */
     let allTickets     = [];
     let activeTab      = "open";
     let activePriority = "all";
 
     const TEAM = ["Subh", "Nerrisa", "Navjot", "Omier", "Sandli"];
     const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+    const STORE_LABELS   = { timhortons:"Tim Hortons", starbucks:"Starbucks", edojapan:"Edo Japan" };
 
-    const STORE_LABELS = {
-        timhortons: "Tim Hortons",
-        starbucks:  "Starbucks",
-        edojapan:   "Edo Japan"
-    };
-
-    /* ── Load ── */
     async function loadTickets() {
         try {
             const res = await fetch("/tickets");
@@ -294,32 +296,22 @@
                 return Object.assign({
                     ticket_status: "open",
                     priority:      rs === "BUSY" ? "high" : rs === "MODERATE" ? "medium" : "low",
-                    admin_note:    "",
-                    assignee:      "",
-                    type:          "queue_status",
-                    updated_at:    null
+                    admin_note: "", assignee: "", type: "queue_status", updated_at: null
                 }, t);
             });
-            updateStats();
-            updateBadges();
-            try {
-                renderTickets();
-            } catch(renderErr) {
-                console.error("Render error:", renderErr);
-                document.getElementById("ticketList").innerHTML =
-                    '<div class="empty-state">Display error: ' + renderErr.message + '</div>';
+            updateStats(); updateBadges();
+            try { renderTickets(); } catch(e) {
+                document.getElementById("ticketList").innerHTML = '<div class="empty-state">Display error: ' + e.message + '</div>';
             }
             const now = new Date();
             document.getElementById("refreshInfo").textContent =
                 "Last refreshed: " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
         } catch (e) {
-            console.error("Load error:", e);
             document.getElementById("ticketList").innerHTML =
-                '<div class="empty-state">Could not load tickets from Azure (' + e.message + ')</div>';
+                '<div class="empty-state">Could not load tickets (' + e.message + ')</div>';
         }
     }
 
-    /* ── Stats ── */
     function updateStats() {
         setText("statTotal",      allTickets.length);
         setText("statOpen",       allTickets.filter(t => t.ticket_status === "open").length);
@@ -336,7 +328,6 @@
         setText("badgeAll",        allTickets.length);
     }
 
-    /* ── Tab / priority ── */
     function setTab(tab, btn) {
         activeTab = tab;
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -351,7 +342,6 @@
         renderTickets();
     }
 
-    /* ── Render ── */
     function renderTickets() {
         const search         = (document.getElementById("searchInput").value || "").toLowerCase();
         const filterAssignee = document.getElementById("filterAssignee").value;
@@ -360,68 +350,47 @@
         const list           = document.getElementById("ticketList");
 
         let filtered = [...allTickets];
+        if (activeTab !== "all")           filtered = filtered.filter(t => t.ticket_status === activeTab);
+        if (activePriority !== "all")      filtered = filtered.filter(t => t.priority === activePriority);
+        if (filterAssignee === "__unassigned__") filtered = filtered.filter(t => !t.assignee);
+        else if (filterAssignee)           filtered = filtered.filter(t => t.assignee === filterAssignee);
+        if (filterStore)                   filtered = filtered.filter(t => t.store === filterStore);
+        if (search)                        filtered = filtered.filter(t =>
+            (t.comment||"").toLowerCase().includes(search) ||
+            (t.assignee||"").toLowerCase().includes(search) ||
+            String(t.id).includes(search)
+        );
 
-        if (activeTab !== "all")
-            filtered = filtered.filter(t => t.ticket_status === activeTab);
-
-        if (activePriority !== "all")
-            filtered = filtered.filter(t => t.priority === activePriority);
-
-        if (filterAssignee === "__unassigned__")
-            filtered = filtered.filter(t => !t.assignee);
-        else if (filterAssignee)
-            filtered = filtered.filter(t => t.assignee === filterAssignee);
-
-        if (filterStore)
-            filtered = filtered.filter(t => t.store === filterStore);
-
-        if (search)
-            filtered = filtered.filter(t =>
-                (t.comment  || "").toLowerCase().includes(search) ||
-                (t.assignee || "").toLowerCase().includes(search) ||
-                String(t.id).includes(search)
-            );
-
-        // Sort
-        if (sortBy === "oldest")
-            filtered.reverse();
-        else if (sortBy === "priority")
-            filtered.sort((a,b) => (PRIORITY_ORDER[a.priority]||2) - (PRIORITY_ORDER[b.priority]||2));
-        else if (sortBy === "updated")
-            filtered.sort((a,b) => new Date(b.updated_at || b.submitted_at) - new Date(a.updated_at || a.submitted_at));
+        if (sortBy === "oldest")    filtered.reverse();
+        else if (sortBy === "priority") filtered.sort((a,b) => (PRIORITY_ORDER[a.priority]||2) - (PRIORITY_ORDER[b.priority]||2));
+        else if (sortBy === "updated")  filtered.sort((a,b) => new Date(b.updated_at||b.submitted_at) - new Date(a.updated_at||a.submitted_at));
 
         if (!filtered.length) {
             const msgs = { open:"No open tickets. 🎉", in_progress:"No tickets in progress.", resolved:"No resolved tickets yet.", all:"No tickets match your filter." };
-            list.innerHTML = `<div class="empty-state">${msgs[activeTab] || "No tickets."}</div>`;
+            list.innerHTML = `<div class="empty-state">${msgs[activeTab]||"No tickets."}</div>`;
             return;
         }
-
         list.innerHTML = filtered.map(t => buildCard(t)).join("");
     }
 
-    /* ── Build card ── */
     function buildCard(t) {
-        const prio     = t.priority || "low";
-        const ts       = t.ticket_status || "open";
-        const sc       = t.reported_status === "NOT BUSY" ? "not-busy"
-                       : t.reported_status === "MODERATE"  ? "moderate"
-                       : t.reported_status === "BUSY"       ? "busy" : "issue";
+        const prio  = t.priority || "low";
+        const ts    = t.ticket_status || "open";
+        const sc    = t.reported_status === "NOT BUSY" ? "not-busy"
+                    : t.reported_status === "MODERATE"  ? "moderate"
+                    : t.reported_status === "BUSY"       ? "busy" : "issue";
         const statusLabel = ts === "in_progress" ? "In Progress" : ts.charAt(0).toUpperCase() + ts.slice(1);
         const typeBadge   = t.type === "problem_report"
             ? '<span class="badge type-issue">⚠ PROBLEM</span>'
             : '<span class="badge type-queue">QUEUE</span>';
-
         const storeLabel = STORE_LABELS[t.store] || t.store || "";
         const storeBadge = storeLabel
             ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.45);font-size:0.6rem">${storeLabel}</span>`
             : "";
-
-        // Assignee badge
         const assigneeBadge = t.assignee
             ? `<span class="badge assignee-${t.assignee}">👤 ${t.assignee}</span>`
             : `<span class="badge unassigned">Unassigned</span>`;
 
-        // Action buttons
         const actions = ts === "open"
             ? `<button class="action-btn in-progress" onclick="updateStatus('${t.id}','in_progress')">▶ In Progress</button>
                <button class="action-btn resolve"     onclick="updateStatus('${t.id}','resolved')">✔ Resolve</button>`
@@ -433,15 +402,20 @@
         const noteVal    = (t.admin_note || "").replace(/"/g, "&quot;");
         const updatedStr = t.updated_at ? "  · Updated " + formatTime(t.updated_at) : "";
 
-        // Assignee options
         const assigneeOptions = TEAM.map(name =>
             `<option value="${name}" ${t.assignee === name ? "selected" : ""}>${name}</option>`
         ).join("");
 
-        // Priority options
         const priorityOptions = ["high","medium","low"].map(p =>
             `<option value="${p}" ${prio === p ? "selected" : ""}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`
         ).join("");
+
+        // Assign to Me button — only show if current user is in TEAM and not already assigned to them
+        const isInTeam    = TEAM.includes(currentUserName);
+        const alreadyMine = t.assignee === currentUserName;
+        const assignMeBtn = isInTeam && !alreadyMine
+            ? `<button class="action-btn assign-me" onclick="setAssignee('${t.id}','${currentUserName}')">👤 Assign to Me</button>`
+            : "";
 
         return `<div class="ticket-card priority-${prio}" id="card-${t.id}">
             <div class="ticket-top">
@@ -459,7 +433,6 @@
 
             <div class="ticket-comment ${!t.comment ? 'empty' : ''}">${t.comment || 'No comment provided'}</div>
 
-            <!-- NEW: controls row — assign, priority, note -->
             <div class="controls-row">
                 <div class="control-group">
                     <div class="control-label">Assign To</div>
@@ -468,14 +441,12 @@
                         ${assigneeOptions}
                     </select>
                 </div>
-
                 <div class="control-group">
                     <div class="control-label">Priority</div>
                     <select class="inline-select" onchange="setTicketPriority('${t.id}', this.value)">
                         ${priorityOptions}
                     </select>
                 </div>
-
                 <div class="control-group" style="flex:1;min-width:200px">
                     <div class="control-label">Admin Note</div>
                     <div class="admin-note-row">
@@ -488,97 +459,70 @@
 
             <div class="ticket-actions">
                 ${actions}
+                ${assignMeBtn}
             </div>
         </div>`;
     }
 
-    /* ── Update status ── */
     async function updateStatus(id, newStatus) {
         const card = document.getElementById("card-" + id);
         if (card) card.style.opacity = "0.5";
         try {
             const res = await fetch("/tickets/" + id, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ticket_status: newStatus })
             });
             if (!res.ok) throw new Error();
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
-            if (idx !== -1) {
-                allTickets[idx].ticket_status = newStatus;
-                allTickets[idx].updated_at    = new Date().toISOString();
-            }
+            if (idx !== -1) { allTickets[idx].ticket_status = newStatus; allTickets[idx].updated_at = new Date().toISOString(); }
             updateStats(); updateBadges(); renderTickets();
-        } catch {
-            if (card) card.style.opacity = "1";
-            alert("Could not update ticket. Try again.");
-        }
+        } catch { if (card) card.style.opacity = "1"; alert("Could not update ticket. Try again."); }
     }
 
-    /* ── NEW: Set assignee ── */
     async function setAssignee(id, assignee) {
         try {
             const res = await fetch("/tickets/" + id, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ assignee })
             });
             if (!res.ok) throw new Error();
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
-            if (idx !== -1) {
-                allTickets[idx].assignee   = assignee;
-                allTickets[idx].updated_at = new Date().toISOString();
-            }
+            if (idx !== -1) { allTickets[idx].assignee = assignee; allTickets[idx].updated_at = new Date().toISOString(); }
             updateStats(); renderTickets();
-        } catch {
-            alert("Could not assign ticket.");
-        }
+        } catch { alert("Could not assign ticket."); }
     }
 
-    /* ── NEW: Set priority ── */
     async function setTicketPriority(id, priority) {
         try {
             const res = await fetch("/tickets/" + id, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ priority })
             });
             if (!res.ok) throw new Error();
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
-            if (idx !== -1) {
-                allTickets[idx].priority   = priority;
-                allTickets[idx].updated_at = new Date().toISOString();
-            }
+            if (idx !== -1) { allTickets[idx].priority = priority; allTickets[idx].updated_at = new Date().toISOString(); }
             updateStats(); renderTickets();
-        } catch {
-            alert("Could not update priority.");
-        }
+        } catch { alert("Could not update priority."); }
     }
 
-    /* ── Save note ── */
     async function saveNote(id) {
         const noteEl = document.getElementById("note-" + id);
         const fbEl   = document.getElementById("noteFb-" + id);
         const note   = noteEl ? noteEl.value.trim() : "";
         try {
             const res = await fetch("/tickets/" + id, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ note })
             });
             if (!res.ok) throw new Error();
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
             if (idx !== -1) allTickets[idx].admin_note = note;
             if (fbEl) { fbEl.style.display = "inline"; setTimeout(() => fbEl.style.display = "none", 2000); }
-        } catch {
-            alert("Could not save note.");
-        }
+        } catch { alert("Could not save note."); }
     }
 
-    /* ── Clear all ── */
     function showClearModal() {
-        document.getElementById("clearCount").textContent =
-            allTickets.length + " ticket" + (allTickets.length !== 1 ? "s" : "");
+        document.getElementById("clearCount").textContent = allTickets.length + " ticket" + (allTickets.length !== 1 ? "s" : "");
         document.getElementById("clearModal").classList.add("visible");
     }
     function hideClearModal() { document.getElementById("clearModal").classList.remove("visible"); }
@@ -591,7 +535,6 @@
         } catch (e) { alert("Error: " + e.message); }
     }
 
-    /* ── Export CSV ── */
     function exportCSV() {
         if (!allTickets.length) { alert("No tickets to export."); return; }
         const header = "Ticket ID,Store,Reported Status,Priority,Ticket Status,Assignee,Comment,Admin Note,Submitted At,Updated At";
@@ -600,22 +543,23 @@
         );
         const blob = new Blob([[header,...rows].join("\n")], { type: "text/csv" });
         const url  = URL.createObjectURL(blob);
-        const a    = Object.assign(document.createElement("a"), { href: url, download: "tickets_" + new Date().toISOString().slice(0,10) + ".csv" });
-        a.click(); URL.revokeObjectURL(url);
+        Object.assign(document.createElement("a"), { href: url, download: "tickets_" + new Date().toISOString().slice(0,10) + ".csv" }).click();
+        URL.revokeObjectURL(url);
     }
 
-    /* ── Helpers ── */
     function formatTime(iso) {
         if (!iso) return "--";
         const d = new Date(iso);
         return d.toLocaleDateString("en-CA") + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
     }
-    function pad(n) { return String(n).padStart(2,"0"); }
-    function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+    function pad(n)        { return String(n).padStart(2,"0"); }
+    function setText(id,v) { const e=document.getElementById(id); if(e) e.textContent=v; }
 
-    /* ── Start ── */
-    loadTickets();
-    setInterval(loadTickets, 15000);
+    /* ── Boot ── */
+    initAuth().catch(err => {
+        console.error("Auth error:", err);
+        window.location.href = "./admin_login.html";
+    });
 </script>
 </body>
 </html>
