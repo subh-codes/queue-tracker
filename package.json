@@ -1,5 +1,5 @@
 {
-  "name": "qms-i",
+  "name": "queue-tracker",
   "version": "1.0.0",
   "description": "Queue Tracker Azure Web App",
   "main": "server.js",
