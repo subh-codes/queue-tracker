@@ -41,6 +41,11 @@
         .search-input { flex: 1; min-width: 180px; padding: 9px 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); color: white; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
         .search-input:focus { border-color: rgb(14,183,70); }
         .search-input::placeholder { color: rgba(255,255,255,0.2); }
+
+        .toolbar-select { padding: 9px 12px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-family: sans-serif; font-size: 0.82rem; outline: none; cursor: pointer; transition: border-color 0.2s; }
+        .toolbar-select:focus { border-color: rgb(14,183,70); }
+        .toolbar-select option { background: #111; }
+
         .filter-btn { padding: 8px 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.45); font-family: Orbitron, sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .filter-btn:hover { border-color: white; color: white; }
         .filter-btn.active { background: white; color: #05060A; border-color: white; }
@@ -76,13 +81,29 @@
         .badge.type-issue  { background: rgba(255,80,80,0.12);    color: rgb(255,120,120); font-size:0.62rem; }
         .badge.type-queue  { background: rgba(255,255,255,0.06);  color: rgba(255,255,255,0.4); font-size:0.62rem; }
 
+        /* ── NEW: assignee badge ── */
+        .badge.assignee-Subh    { background: rgba(167,139,250,0.15); color: rgb(167,139,250); }
+        .badge.assignee-Nerrisa { background: rgba(91,143,255,0.15);  color: rgb(91,143,255); }
+        .badge.assignee-Navjot  { background: rgba(14,183,70,0.15);   color: rgb(14,183,70); }
+        .badge.assignee-Omier   { background: rgba(255,170,0,0.15);   color: rgb(255,170,0); }
+        .badge.assignee-Sandli  { background: rgba(255,99,71,0.15);   color: rgb(255,120,90); }
+        .badge.unassigned       { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); }
+
         .ticket-comment { font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.5; }
         .ticket-comment.empty { color: rgba(255,255,255,0.25); font-style: italic; }
 
         .ticket-time { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
 
+        /* ── NEW: expanded controls row ── */
+        .controls-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; padding: 10px 0 4px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); font-family: Orbitron, sans-serif; }
+        .inline-select { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-family: sans-serif; font-size: 0.82rem; outline: none; cursor: pointer; transition: border-color 0.2s; min-width: 130px; }
+        .inline-select:focus { border-color: rgb(14,183,70); }
+        .inline-select option { background: #111; }
+
         /* Admin note */
-        .admin-note-row { display: flex; gap: 8px; align-items: flex-start; }
+        .admin-note-row { display: flex; gap: 8px; align-items: flex-start; flex: 1; min-width: 220px; }
         .admin-note-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); color: white; font-size: 0.85rem; font-family: sans-serif; resize: none; outline: none; min-height: 36px; max-height: 100px; transition: border-color 0.2s; }
         .admin-note-input:focus { border-color: rgb(14,183,70); }
         .admin-note-input::placeholder { color: rgba(255,255,255,0.2); }
@@ -132,6 +153,7 @@
         @media (max-width: 768px) {
             .stats-row, .tab-bar, .toolbar, .ticket-list, .action-bar, .section-label { max-width: 420px; }
             .ticket-top { flex-direction: column; }
+            .controls-row { flex-direction: column; }
         }
     </style>
 </head>
@@ -168,6 +190,10 @@
             <div class="stat-label">High Priority</div>
             <div class="stat-value" id="statHigh" style="color:rgb(220,53,69)">--</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-label">Unassigned</div>
+            <div class="stat-value" id="statUnassigned" style="color:rgba(255,255,255,0.4)">--</div>
+        </div>
     </div>
 
     <!-- Tabs -->
@@ -180,7 +206,35 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-        <input type="text" class="search-input" id="searchInput" placeholder="Search by comment or ID..." oninput="renderTickets()">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by comment, ID, assignee..." oninput="renderTickets()">
+
+        <!-- NEW: filter by assignee -->
+        <select class="toolbar-select" id="filterAssignee" onchange="renderTickets()">
+            <option value="">All Assignees</option>
+            <option value="__unassigned__">Unassigned</option>
+            <option value="Subh">Subh</option>
+            <option value="Nerrisa">Nerrisa</option>
+            <option value="Navjot">Navjot</option>
+            <option value="Omier">Omier</option>
+            <option value="Sandli">Sandli</option>
+        </select>
+
+        <!-- NEW: filter by store -->
+        <select class="toolbar-select" id="filterStore" onchange="renderTickets()">
+            <option value="">All Stores</option>
+            <option value="timhortons">Tim Hortons</option>
+            <option value="starbucks">Starbucks</option>
+            <option value="edojapan">Edo Japan</option>
+        </select>
+
+        <!-- NEW: sort -->
+        <select class="toolbar-select" id="sortBy" onchange="renderTickets()">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="priority">By Priority</option>
+            <option value="updated">Recently Updated</option>
+        </select>
+
         <button class="filter-btn active" data-priority="all"    onclick="setPriority('all',this)">All Priority</button>
         <button class="filter-btn high"   data-priority="high"   onclick="setPriority('high',this)">🔴 High</button>
         <button class="filter-btn medium" data-priority="medium" onclick="setPriority('medium',this)">🟡 Medium</button>
@@ -216,9 +270,18 @@
 </div>
 
 <script>
-    let allTickets    = [];
-    let activeTab     = "open";
+    let allTickets     = [];
+    let activeTab      = "open";
     let activePriority = "all";
+
+    const TEAM = ["Subh", "Nerrisa", "Navjot", "Omier", "Sandli"];
+    const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+    const STORE_LABELS = {
+        timhortons: "Tim Hortons",
+        starbucks:  "Starbucks",
+        edojapan:   "Edo Japan"
+    };
 
     /* ── Load ── */
     async function loadTickets() {
@@ -226,13 +289,13 @@
             const res = await fetch("/tickets");
             if (!res.ok) throw new Error("HTTP " + res.status);
             const raw = await res.json();
-            // Newest first, fill missing fields for old tickets
             allTickets = raw.slice().reverse().map(t => {
                 const rs = (t.reported_status || "").toUpperCase();
                 return Object.assign({
                     ticket_status: "open",
                     priority:      rs === "BUSY" ? "high" : rs === "MODERATE" ? "medium" : "low",
                     admin_note:    "",
+                    assignee:      "",
                     type:          "queue_status",
                     updated_at:    null
                 }, t);
@@ -263,6 +326,7 @@
         setText("statInProgress", allTickets.filter(t => t.ticket_status === "in_progress").length);
         setText("statResolved",   allTickets.filter(t => t.ticket_status === "resolved").length);
         setText("statHigh",       allTickets.filter(t => t.priority === "high").length);
+        setText("statUnassigned", allTickets.filter(t => !t.assignee).length);
     }
 
     function updateBadges() {
@@ -289,31 +353,45 @@
 
     /* ── Render ── */
     function renderTickets() {
-        const search = (document.getElementById("searchInput").value || "").toLowerCase();
-        const list   = document.getElementById("ticketList");
+        const search         = (document.getElementById("searchInput").value || "").toLowerCase();
+        const filterAssignee = document.getElementById("filterAssignee").value;
+        const filterStore    = document.getElementById("filterStore").value;
+        const sortBy         = document.getElementById("sortBy").value;
+        const list           = document.getElementById("ticketList");
 
-        let filtered = allTickets;
+        let filtered = [...allTickets];
 
-        if (activeTab !== "all") {
+        if (activeTab !== "all")
             filtered = filtered.filter(t => t.ticket_status === activeTab);
-        }
-        if (activePriority !== "all") {
+
+        if (activePriority !== "all")
             filtered = filtered.filter(t => t.priority === activePriority);
-        }
-        if (search) {
+
+        if (filterAssignee === "__unassigned__")
+            filtered = filtered.filter(t => !t.assignee);
+        else if (filterAssignee)
+            filtered = filtered.filter(t => t.assignee === filterAssignee);
+
+        if (filterStore)
+            filtered = filtered.filter(t => t.store === filterStore);
+
+        if (search)
             filtered = filtered.filter(t =>
-                (t.comment || "").toLowerCase().includes(search) ||
+                (t.comment  || "").toLowerCase().includes(search) ||
+                (t.assignee || "").toLowerCase().includes(search) ||
                 String(t.id).includes(search)
             );
-        }
+
+        // Sort
+        if (sortBy === "oldest")
+            filtered.reverse();
+        else if (sortBy === "priority")
+            filtered.sort((a,b) => (PRIORITY_ORDER[a.priority]||2) - (PRIORITY_ORDER[b.priority]||2));
+        else if (sortBy === "updated")
+            filtered.sort((a,b) => new Date(b.updated_at || b.submitted_at) - new Date(a.updated_at || a.submitted_at));
 
         if (!filtered.length) {
-            const msgs = {
-                open:        "No open tickets. 🎉",
-                in_progress: "No tickets currently in progress.",
-                resolved:    "No resolved tickets yet.",
-                all:         "No tickets match your filter."
-            };
+            const msgs = { open:"No open tickets. 🎉", in_progress:"No tickets in progress.", resolved:"No resolved tickets yet.", all:"No tickets match your filter." };
             list.innerHTML = `<div class="empty-state">${msgs[activeTab] || "No tickets."}</div>`;
             return;
         }
@@ -321,17 +399,29 @@
         list.innerHTML = filtered.map(t => buildCard(t)).join("");
     }
 
+    /* ── Build card ── */
     function buildCard(t) {
-        const prio = t.priority || "low";
-        const ts   = t.ticket_status || "open";
-        const sc   = t.reported_status === "NOT BUSY" ? "not-busy"
-                   : t.reported_status === "MODERATE"  ? "moderate"
-                   : t.reported_status === "BUSY"       ? "busy" : "issue";
+        const prio     = t.priority || "low";
+        const ts       = t.ticket_status || "open";
+        const sc       = t.reported_status === "NOT BUSY" ? "not-busy"
+                       : t.reported_status === "MODERATE"  ? "moderate"
+                       : t.reported_status === "BUSY"       ? "busy" : "issue";
         const statusLabel = ts === "in_progress" ? "In Progress" : ts.charAt(0).toUpperCase() + ts.slice(1);
-        const typeBadge = t.type === "problem_report"
-            ? '<span class="badge type-issue">⚠ PROBLEM REPORT</span>'
-            : '<span class="badge type-queue">QUEUE REPORT</span>';
+        const typeBadge   = t.type === "problem_report"
+            ? '<span class="badge type-issue">⚠ PROBLEM</span>'
+            : '<span class="badge type-queue">QUEUE</span>';
 
+        const storeLabel = STORE_LABELS[t.store] || t.store || "";
+        const storeBadge = storeLabel
+            ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.45);font-size:0.6rem">${storeLabel}</span>`
+            : "";
+
+        // Assignee badge
+        const assigneeBadge = t.assignee
+            ? `<span class="badge assignee-${t.assignee}">👤 ${t.assignee}</span>`
+            : `<span class="badge unassigned">Unassigned</span>`;
+
+        // Action buttons
         const actions = ts === "open"
             ? `<button class="action-btn in-progress" onclick="updateStatus('${t.id}','in_progress')">▶ In Progress</button>
                <button class="action-btn resolve"     onclick="updateStatus('${t.id}','resolved')">✔ Resolve</button>`
@@ -340,26 +430,62 @@
                <button class="action-btn reopen"  onclick="updateStatus('${t.id}','open')">↩ Reopen</button>`
             : `<button class="action-btn reopen" onclick="updateStatus('${t.id}','open')">↩ Reopen</button>`;
 
-        const noteVal = (t.admin_note || "").replace(/"/g, "&quot;");
+        const noteVal    = (t.admin_note || "").replace(/"/g, "&quot;");
         const updatedStr = t.updated_at ? "  · Updated " + formatTime(t.updated_at) : "";
+
+        // Assignee options
+        const assigneeOptions = TEAM.map(name =>
+            `<option value="${name}" ${t.assignee === name ? "selected" : ""}>${name}</option>`
+        ).join("");
+
+        // Priority options
+        const priorityOptions = ["high","medium","low"].map(p =>
+            `<option value="${p}" ${prio === p ? "selected" : ""}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`
+        ).join("");
 
         return `<div class="ticket-card priority-${prio}" id="card-${t.id}">
             <div class="ticket-top">
                 <div class="ticket-meta">
                     <span class="ticket-id">#${t.id}</span>
                     <span class="badge ${sc}">${t.reported_status}</span>
-                    <span class="badge ${prio}">${prio.toUpperCase()} PRIORITY</span>
+                    <span class="badge ${prio}">${prio.toUpperCase()}</span>
                     <span class="badge ${ts}">${statusLabel}</span>
                     ${typeBadge}
+                    ${storeBadge}
+                    ${assigneeBadge}
                 </div>
                 <span class="ticket-time">${formatTime(t.submitted_at)}${updatedStr}</span>
             </div>
+
             <div class="ticket-comment ${!t.comment ? 'empty' : ''}">${t.comment || 'No comment provided'}</div>
-            <div class="admin-note-row">
-                <textarea class="admin-note-input" id="note-${t.id}" placeholder="Add admin note..." rows="1">${noteVal}</textarea>
-                <button class="action-btn save-note" onclick="saveNote('${t.id}')">Save Note</button>
-                <span class="save-feedback" id="noteFb-${t.id}">Saved ✓</span>
+
+            <!-- NEW: controls row — assign, priority, note -->
+            <div class="controls-row">
+                <div class="control-group">
+                    <div class="control-label">Assign To</div>
+                    <select class="inline-select" onchange="setAssignee('${t.id}', this.value)">
+                        <option value="">— Unassigned —</option>
+                        ${assigneeOptions}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Priority</div>
+                    <select class="inline-select" onchange="setTicketPriority('${t.id}', this.value)">
+                        ${priorityOptions}
+                    </select>
+                </div>
+
+                <div class="control-group" style="flex:1;min-width:200px">
+                    <div class="control-label">Admin Note</div>
+                    <div class="admin-note-row">
+                        <textarea class="admin-note-input" id="note-${t.id}" placeholder="Add admin note..." rows="1">${noteVal}</textarea>
+                        <button class="action-btn save-note" onclick="saveNote('${t.id}')">Save</button>
+                        <span class="save-feedback" id="noteFb-${t.id}">Saved ✓</span>
+                    </div>
+                </div>
             </div>
+
             <div class="ticket-actions">
                 ${actions}
             </div>
@@ -377,16 +503,55 @@
                 body: JSON.stringify({ ticket_status: newStatus })
             });
             if (!res.ok) throw new Error();
-            // Update local
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
             if (idx !== -1) {
                 allTickets[idx].ticket_status = newStatus;
                 allTickets[idx].updated_at    = new Date().toISOString();
             }
             updateStats(); updateBadges(); renderTickets();
-        } catch (e) {
+        } catch {
             if (card) card.style.opacity = "1";
             alert("Could not update ticket. Try again.");
+        }
+    }
+
+    /* ── NEW: Set assignee ── */
+    async function setAssignee(id, assignee) {
+        try {
+            const res = await fetch("/tickets/" + id, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assignee })
+            });
+            if (!res.ok) throw new Error();
+            const idx = allTickets.findIndex(t => String(t.id) === String(id));
+            if (idx !== -1) {
+                allTickets[idx].assignee   = assignee;
+                allTickets[idx].updated_at = new Date().toISOString();
+            }
+            updateStats(); renderTickets();
+        } catch {
+            alert("Could not assign ticket.");
+        }
+    }
+
+    /* ── NEW: Set priority ── */
+    async function setTicketPriority(id, priority) {
+        try {
+            const res = await fetch("/tickets/" + id, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ priority })
+            });
+            if (!res.ok) throw new Error();
+            const idx = allTickets.findIndex(t => String(t.id) === String(id));
+            if (idx !== -1) {
+                allTickets[idx].priority   = priority;
+                allTickets[idx].updated_at = new Date().toISOString();
+            }
+            updateStats(); renderTickets();
+        } catch {
+            alert("Could not update priority.");
         }
     }
 
@@ -405,7 +570,7 @@
             const idx = allTickets.findIndex(t => String(t.id) === String(id));
             if (idx !== -1) allTickets[idx].admin_note = note;
             if (fbEl) { fbEl.style.display = "inline"; setTimeout(() => fbEl.style.display = "none", 2000); }
-        } catch (e) {
+        } catch {
             alert("Could not save note.");
         }
     }
@@ -429,9 +594,9 @@
     /* ── Export CSV ── */
     function exportCSV() {
         if (!allTickets.length) { alert("No tickets to export."); return; }
-        const header = "Ticket ID,Store,Reported Status,Priority,Ticket Status,Comment,Admin Note,Submitted At,Updated At";
+        const header = "Ticket ID,Store,Reported Status,Priority,Ticket Status,Assignee,Comment,Admin Note,Submitted At,Updated At";
         const rows   = allTickets.map(t =>
-            `"${t.id||""}","${t.store||""}","${t.reported_status||""}","${t.priority||""}","${t.ticket_status||""}","${(t.comment||"").replace(/"/g,'""')}","${(t.admin_note||"").replace(/"/g,'""')}","${t.submitted_at||""}","${t.updated_at||""}"`
+            `"${t.id||""}","${t.store||""}","${t.reported_status||""}","${t.priority||""}","${t.ticket_status||""}","${t.assignee||""}","${(t.comment||"").replace(/"/g,'""')}","${(t.admin_note||"").replace(/"/g,'""')}","${t.submitted_at||""}","${t.updated_at||""}"`
         );
         const blob = new Blob([[header,...rows].join("\n")], { type: "text/csv" });
         const url  = URL.createObjectURL(blob);
