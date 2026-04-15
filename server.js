@@ -8,7 +8,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 /* ════════════════════════════════════════════════
-   AZURE BLOB STORAGE
+   AZURE BLOB STORAGE ckoud
    ════════════════════════════════════════════════ */
 
 const CONN_STR       = process.env.AZURE_STORAGE_CONNECTION_STRING || null;
