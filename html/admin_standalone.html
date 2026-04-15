@@ -8,6 +8,60 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=location_on" />
+
+    <!-- ── Microsoft MSAL.js ── -->
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+    <!-- ── Entra ID Auth Guard — runs before anything else ── -->
+    <script>
+        const _msalConfig = {
+            auth: {
+                clientId:    "023f3ebd-fd48-4770-b359-7299300764c7",
+                authority:   "https://login.microsoftonline.com/5582e4ba-e088-4875-abf6-19f443f2815e",
+                redirectUri: window.location.origin + "/html/admin_standalone.html"
+            },
+            cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+        };
+
+        const _msalInstance = new msal.PublicClientApplication(_msalConfig);
+
+        // Runs immediately — blocks page if not signed in
+        (async function checkAuth() {
+            try {
+                // Handle redirect coming back from Microsoft login
+                const response = await _msalInstance.handleRedirectPromise();
+                if (response) {
+                    _msalInstance.setActiveAccount(response.account);
+                    sessionStorage.setItem("qms_user_name",  response.account.name || response.account.username);
+                    sessionStorage.setItem("qms_user_email", response.account.username);
+                }
+
+                const accounts = _msalInstance.getAllAccounts();
+                if (accounts.length === 0) {
+                    // Not signed in — kick to login page
+                    window.location.href = "./admin_login.html";
+                } else {
+                    // Signed in — store user info for display
+                    const acc = accounts[0];
+                    sessionStorage.setItem("qms_user_name",  acc.name || acc.username);
+                    sessionStorage.setItem("qms_user_email", acc.username);
+                }
+            } catch (e) {
+                console.error("Auth error:", e);
+                window.location.href = "./admin_login.html";
+            }
+        })();
+
+        // Sign out — called by the sign out button
+        function msSignOut() {
+            sessionStorage.removeItem("qms_user_name");
+            sessionStorage.removeItem("qms_user_email");
+            _msalInstance.logoutRedirect({
+                postLogoutRedirectUri: window.location.origin + "/html/main.html"
+            });
+        }
+    </script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; background-color: #05060A; color: white; min-height: 100vh; padding: 12px; }
@@ -17,6 +71,22 @@
         .admin-badge { font-size: 0.7rem; font-family: Orbitron, sans-serif; background-color: rgb(14, 183, 70); color: #05060A; padding: 3px 8px; border-radius: 6px; font-weight: bold; letter-spacing: 0.05em; }
         .live-refresh { font-size: 1rem; }
         .online-status { color: rgb(14, 255, 70); font-weight: bold; margin-right: 4px; }
+
+        /* ── user chip in header ── */
+        .user-chip {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.72rem; color: rgba(255,255,255,0.5);
+            font-family: Orbitron, sans-serif; letter-spacing: 0.04em;
+        }
+        .user-chip-name { color: rgba(255,255,255,0.8); }
+        .signout-btn {
+            background: none; border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.45); font-family: Orbitron, sans-serif;
+            font-size: 0.65rem; padding: 4px 10px; border-radius: 6px;
+            cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em;
+        }
+        .signout-btn:hover { border-color: rgb(220,53,69); color: rgb(220,53,69); }
+
         main { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 36px; gap: 24px; }
         .page-heading { font-size: clamp(1.7rem, 6vw, 2.2rem); font-weight: bold; font-family: Orbitron, sans-serif; text-align: center; }
         .section-label { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); font-family: Orbitron, sans-serif; width: 100%; max-width: 1100px; }
@@ -104,10 +174,17 @@
             <div class="logo-text">Queue Monitoring System</div>
             <span class="admin-badge">ADMIN</span>
         </div>
-        <div class="live-refresh">
-            <span class="online-status">●</span>
-            Last refresh:
-            <span class="refresh-hour">--</span>:<span class="refresh-mins">--</span>:<span class="refresh-seconds">--</span>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div class="live-refresh">
+                <span class="online-status">●</span>
+                Last refresh:
+                <span class="refresh-hour">--</span>:<span class="refresh-mins">--</span>:<span class="refresh-seconds">--</span>
+            </div>
+            <!-- Signed-in user chip + sign out -->
+            <div class="user-chip">
+                <span id="headerUserName" class="user-chip-name">—</span>
+                <button class="signout-btn" onclick="msSignOut()">Sign Out</button>
+            </div>
         </div>
     </header>
 
@@ -233,6 +310,13 @@
     </main>
 
     <script>
+        // ── Show signed-in user name in header ──
+        (function showUser() {
+            const name = sessionStorage.getItem("qms_user_name") || "";
+            const el = document.getElementById("headerUserName");
+            if (el && name) el.textContent = name;
+        })();
+
         function applyStatusColor(element, statusText) {
             if (!element) return;
             element.classList.remove("not-busy", "moderate", "busy", "unknown");
