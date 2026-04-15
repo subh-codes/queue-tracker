@@ -272,7 +272,11 @@
 
         // Start app
         loadTickets();
-        setInterval(loadTickets, 15000);
+        setInterval(() => {
+            // Don't refresh if a note textarea is currently focused
+            if (document.activeElement && document.activeElement.classList.contains("admin-note-input")) return;
+            loadTickets();
+        }, 15000);
     }
 
     /* ═══════════════════════════════
@@ -450,7 +454,9 @@
                 <div class="control-group" style="flex:1;min-width:200px">
                     <div class="control-label">Admin Note</div>
                     <div class="admin-note-row">
-                        <textarea class="admin-note-input" id="note-${t.id}" placeholder="Add admin note..." rows="1">${noteVal}</textarea>
+                        <textarea class="admin-note-input" id="note-${t.id}" placeholder="Add admin note... (Ctrl+Enter to save)" rows="1"
+                            onkeydown="if(event.ctrlKey&&event.key==='Enter'){event.preventDefault();saveNote('${t.id}')}"
+                        >${noteVal}</textarea>
                         <button class="action-btn save-note" onclick="saveNote('${t.id}')">Save</button>
                         <span class="save-feedback" id="noteFb-${t.id}">Saved ✓</span>
                     </div>
