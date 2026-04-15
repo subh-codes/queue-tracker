@@ -7,8 +7,10 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+
+    <!-- Microsoft MSAL.js -->
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +26,6 @@
             padding: 20px;
         }
 
-        /* Back link — top left, same style as timhortons.html */
         #backLink {
             position: fixed;
             top: 16px;
@@ -43,7 +44,6 @@
         #backLink:hover { color: white; }
         #backArrow { font-size: 1.1rem; line-height: 1; }
 
-        /* Centre card */
         .login-wrap {
             width: 100%;
             max-width: 420px;
@@ -53,7 +53,6 @@
             gap: 30px;
         }
 
-        /* Header */
         .login-header {
             text-align: center;
             display: flex;
@@ -85,7 +84,6 @@
             letter-spacing: 0.05em;
         }
 
-        /* Card box — same border/radius pattern as trackinfo cards */
         .login-card {
             width: 100%;
             border: 2px solid white;
@@ -94,73 +92,88 @@
             display: flex;
             flex-direction: column;
             gap: 22px;
+            align-items: center;
         }
 
-        /* Fields */
-        .field {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .field label {
-            font-family: Orbitron, sans-serif;
-            font-size: 0.72rem;
-            letter-spacing: 0.08em;
-            color: rgba(255, 255, 255, 0.55);
-            text-transform: uppercase;
-        }
-
-        .field input {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            font-size: 1rem;
-            font-family: Arial, sans-serif;
-            outline: none;
-            transition: border-color 0.2s ease;
-        }
-
-        .field input:focus {
-            border-color: white;
-        }
-
-        .field input::placeholder {
-            color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Error message */
-        #errorMsg {
-            display: none;
-            font-size: 0.85rem;
-            color: rgb(220, 53, 69);
+        .card-desc {
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.45);
             text-align: center;
+            line-height: 1.6;
             font-family: Arial, sans-serif;
         }
 
-        /* Login button — same green style as #trackBtn */
-        #loginBtn {
+        /* Microsoft sign-in button */
+        #msBtn {
             width: 100%;
-            min-height: 48px;
-            padding: 12px 24px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: white;
+            color: #000;
             border: none;
             border-radius: 10px;
-            background-color: rgb(14, 183, 70);
-            color: white;
-            font-size: 1rem;
-            font-family: Orbitron, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s ease;
-            margin-top: 4px;
+            transition: background 0.2s, transform 0.15s;
+        }
+        #msBtn:hover   { background: #f0f0f0; transform: translateY(-1px); }
+        #msBtn:active  { transform: scale(0.98); }
+        #msBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .ms-logo {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
         }
 
-        #loginBtn:hover  { background-color: rgb(10, 150, 55); }
-        #loginBtn:active { transform: scale(0.98); }
+        /* divider */
+        .divider {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.12); }
+        .divider-text { font-size: 0.72rem; color: rgba(255,255,255,0.25); font-family: Orbitron, sans-serif; letter-spacing: 0.08em; }
 
-        /* Mobile */
+        /* org info */
+        .org-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            width: 100%;
+        }
+        .org-dot { width: 8px; height: 8px; border-radius: 50%; background: rgb(14,183,70); animation: pulse 2s infinite; flex-shrink: 0; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .org-text { font-size: 0.75rem; color: rgba(255,255,255,0.4); font-family: Orbitron, sans-serif; letter-spacing: 0.04em; }
+        .org-name { color: rgba(255,255,255,0.7); }
+
+        #errorMsg {
+            font-size: 0.82rem;
+            color: rgb(220, 53, 69);
+            text-align: center;
+            display: none;
+            font-family: Arial, sans-serif;
+        }
+
+        #loadingMsg {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
+            display: none;
+            font-family: Orbitron, sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.06em;
+        }
+
         @media (max-width: 480px) {
             .login-card { padding: 28px 18px; }
         }
@@ -168,7 +181,6 @@
 </head>
 <body>
 
-    <!-- Back to home -->
     <a href="./main.html" id="backLink">
         <span id="backArrow">&#8592;</span>
         <span>Back</span>
@@ -179,71 +191,108 @@
         <div class="login-header">
             <div class="login-title">QUEUE MONITORING<br>SYSTEM</div>
             <span class="admin-badge">ADMIN ACCESS</span>
-            <p class="login-sub">Enter your credentials to continue</p>
+            <p class="login-sub">Sign in with your Microsoft account</p>
         </div>
 
         <div class="login-card">
-            <div class="field">
-                <label for="usernameInput">Username</label>
-                <input
-                    type="text"
-                    id="usernameInput"
-                    placeholder="Enter username"
-                    autocomplete="username"
-                />
+            <p class="card-desc">
+                Admin access is protected by Microsoft Entra ID.<br>
+                Use your organizational Microsoft account to continue.
+            </p>
+
+            <button type="button" id="msBtn" onclick="signIn()">
+                <!-- Microsoft logo -->
+                <svg class="ms-logo" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1"  y="1"  width="9" height="9" fill="#f25022"/>
+                    <rect x="11" y="1"  width="9" height="9" fill="#7fba00"/>
+                    <rect x="1"  y="11" width="9" height="9" fill="#00a4ef"/>
+                    <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+                Sign in with Microsoft
+            </button>
+
+            <div class="divider">
+                <div class="divider-line"></div>
+                <div class="divider-text">SECURED BY</div>
+                <div class="divider-line"></div>
             </div>
 
-            <div class="field">
-                <label for="passwordInput">Password</label>
-                <input
-                    type="password"
-                    id="passwordInput"
-                    placeholder="Enter password"
-                    autocomplete="current-password"
-                />
+            <div class="org-info">
+                <div class="org-dot"></div>
+                <div class="org-text">
+                    Microsoft Entra ID · <span class="org-name">subhnetarsinghicloud.onmicrosoft.com</span>
+                </div>
             </div>
 
-            <p id="errorMsg">Incorrect username or password.</p>
-
-            <button type="button" id="loginBtn">Login</button>
+            <p id="errorMsg">Sign-in failed. Please try again.</p>
+            <p id="loadingMsg">REDIRECTING TO MICROSOFT...</p>
         </div>
 
     </div>
 
     <script>
-        const CREDENTIALS = {
-            username: "adminque",
-            password: "Subh7901@#"
+        // ── MSAL Configuration ──
+        const msalConfig = {
+            auth: {
+                clientId:    "023f3ebd-fd48-4770-b359-7299300764c7",
+                authority:   "https://login.microsoftonline.com/5582e4ba-e088-4875-abf6-19f443f2815e",
+                redirectUri: window.location.origin + "/html/admin_standalone.html"
+            },
+            cache: {
+                cacheLocation: "sessionStorage",
+                storeAuthStateInCookie: false
+            }
         };
 
-        const loginBtn     = document.getElementById("loginBtn");
-        const usernameInput = document.getElementById("usernameInput");
-        const passwordInput = document.getElementById("passwordInput");
-        const errorMsg     = document.getElementById("errorMsg");
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        function attemptLogin() {
-            const user = usernameInput.value.trim();
-            const pass = passwordInput.value;
+        const loginRequest = {
+            scopes: ["User.Read", "openid", "profile", "email"]
+        };
 
-            if (user === CREDENTIALS.username && pass === CREDENTIALS.password) {
-                // Correct — go to admin dashboard
-                window.location.href = "./admin_standalone.html";
-            } else {
-                errorMsg.style.display = "block";
-                passwordInput.value = "";
-                passwordInput.focus();
+        // ── Check if already signed in on page load ──
+        async function checkExistingSession() {
+            try {
+                await msalInstance.handleRedirectPromise();
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length > 0) {
+                    // Already signed in — go straight to admin
+                    window.location.href = "./admin_standalone.html";
+                }
+            } catch (e) {
+                console.error("Session check error:", e);
             }
         }
 
-        loginBtn.addEventListener("click", attemptLogin);
+        // ── Sign in with Microsoft ──
+        async function signIn() {
+            const btn = document.getElementById("msBtn");
+            const loading = document.getElementById("loadingMsg");
+            const err = document.getElementById("errorMsg");
 
-        // Allow Enter key on both fields
-        usernameInput.addEventListener("keydown", e => { if (e.key === "Enter") passwordInput.focus(); });
-        passwordInput.addEventListener("keydown", e => { if (e.key === "Enter") attemptLogin(); });
+            btn.disabled = true;
+            loading.style.display = "block";
+            err.style.display = "none";
 
-        // Hide error when user starts typing again
-        usernameInput.addEventListener("input", () => errorMsg.style.display = "none");
-        passwordInput.addEventListener("input", () => errorMsg.style.display = "none");
+            try {
+                await msalInstance.loginRedirect(loginRequest);
+                // After redirect comes back, admin_standalone.html handles the token
+            } catch (e) {
+                console.error("Login error:", e);
+                err.textContent = "Sign-in failed: " + (e.message || "Please try again.");
+                err.style.display = "block";
+                loading.style.display = "none";
+                btn.disabled = false;
+            }
+        }
+
+        // ── Enter key support ──
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter") signIn();
+        });
+
+        // ── Run on load ──
+        checkExistingSession();
     </script>
 
 </body>
