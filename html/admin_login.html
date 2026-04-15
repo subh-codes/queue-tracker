@@ -192,31 +192,45 @@
             }
         };
 
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-
         const loginRequest = {
             scopes: ["User.Read", "openid", "profile", "email"]
         };
 
-        // ── Check if already signed in on page load ──
-        async function checkExistingSession() {
+        // ── Create and initialize MSAL, then wire up the button ──
+        let msalInstance = null;
+
+        async function bootMsal() {
             try {
+                msalInstance = new msal.PublicClientApplication(msalConfig);
+                await msalInstance.initialize();
+
+                // Handle redirect coming back from Microsoft
                 await msalInstance.handleRedirectPromise();
+
+                // Already signed in — skip login page
                 const accounts = msalInstance.getAllAccounts();
                 if (accounts.length > 0) {
-                    // Already signed in — go straight to admin
                     window.location.href = "./admin_standalone.html";
+                    return;
                 }
+
+                // Ready — enable the button
+                document.getElementById("msBtn").disabled = false;
+
             } catch (e) {
-                console.error("Session check error:", e);
+                console.error("MSAL boot error:", e);
+                const err = document.getElementById("errorMsg");
+                err.textContent = "Initialization error: " + e.message;
+                err.style.display = "block";
             }
         }
 
-        // ── Sign in with Microsoft ──
+        // ── Sign in ──
         async function signIn() {
-            const btn = document.getElementById("msBtn");
+            if (!msalInstance) return;
+            const btn     = document.getElementById("msBtn");
             const loading = document.getElementById("loadingMsg");
-            const err = document.getElementById("errorMsg");
+            const err     = document.getElementById("errorMsg");
 
             btn.disabled = true;
             loading.style.display = "block";
@@ -224,7 +238,6 @@
 
             try {
                 await msalInstance.loginRedirect(loginRequest);
-                // After redirect comes back, admin_standalone.html handles the token
             } catch (e) {
                 console.error("Login error:", e);
                 err.textContent = "Sign-in failed: " + (e.message || "Please try again.");
@@ -234,13 +247,14 @@
             }
         }
 
-        // ── Enter key support ──
+        // ── Enter key ──
         document.addEventListener("keydown", e => {
             if (e.key === "Enter") signIn();
         });
 
-        // ── Run on load ──
-        checkExistingSession();
+        // ── Disable button until MSAL is ready, then boot ──
+        document.getElementById("msBtn").disabled = true;
+        bootMsal();
     </script>
 
 </body>
