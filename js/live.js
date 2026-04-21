@@ -100,16 +100,11 @@ async function refreshSingleStorePage(store) {
             estEl.textContent = "--";
         } else if (data.people <= 2) {
             // 2 or fewer people = no wait
-            estEl.textContent = "0";
+            estEl.textContent = "0 min";
         } else {
-            // Every person above 2 adds 30 seconds
-            const extraPeople  = data.people - 2;
-            const totalSeconds = extraPeople * 30;
-            const mins = Math.floor(totalSeconds / 60);
-            const secs = totalSeconds % 60;
-            estEl.textContent = mins > 0
-                ? (secs > 0 ? `${mins}m ${secs}s` : `${mins}m`)
-                : `${secs}s`;
+            // Every person above 2 adds 1 minute
+            const extraPeople = data.people - 2;
+            estEl.textContent = extraPeople + (extraPeople === 1 ? " min" : " mins");
         }
     }
 
